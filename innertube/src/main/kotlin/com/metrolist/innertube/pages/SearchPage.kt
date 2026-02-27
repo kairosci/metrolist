@@ -9,8 +9,10 @@ import com.metrolist.innertube.models.Album
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.Artist
 import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.models.EpisodeItem
 import com.metrolist.innertube.models.MusicResponsiveListItemRenderer
 import com.metrolist.innertube.models.PlaylistItem
+import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.oddElements
@@ -76,7 +78,8 @@ object SearchPage {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                         } != null,
                     libraryAddToken = libraryTokens.addToken,
-                    libraryRemoveToken = libraryTokens.removeToken
+                    libraryRemoveToken = libraryTokens.removeToken,
+                    isEpisode = renderer.isEpisode
                 )
             }
 
@@ -206,7 +209,108 @@ object SearchPage {
                             ?.watchPlaylistEndpoint ?: return null,
                 )
             }
-
+            renderer.isPodcast -> {
+                PodcastItem(
+                    id =
+                        renderer.navigationEndpoint
+                            ?.browseEndpoint
+                            ?.browseId
+                            ?: return null,
+                    title =
+                        renderer.flexColumns
+                            .firstOrNull()
+                            ?.musicResponsiveListItemFlexColumnRenderer
+                            ?.text
+                            ?.runs
+                            ?.firstOrNull()
+                            ?.text ?: return null,
+                    author =
+                        secondaryLine.firstOrNull()?.firstOrNull()?.let {
+                            Artist(
+                                name = it.text,
+                                id = it.navigationEndpoint?.browseEndpoint?.browseId,
+                            )
+                        },
+                    episodeCountText =
+                        renderer.flexColumns
+                            .getOrNull(1)
+                            ?.musicResponsiveListItemFlexColumnRenderer
+                            ?.text
+                            ?.runs
+                            ?.lastOrNull()
+                            ?.text,
+                    thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    playEndpoint =
+                        renderer.overlay
+                            ?.musicItemThumbnailOverlayRenderer
+                            ?.content
+                            ?.musicPlayButtonRenderer
+                            ?.playNavigationEndpoint
+                            ?.watchPlaylistEndpoint,
+                    shuffleEndpoint =
+                        renderer.menu
+                            ?.menuRenderer
+                            ?.items
+                            ?.find { it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE" }
+                            ?.menuNavigationItemRenderer
+                            ?.navigationEndpoint
+                            ?.watchPlaylistEndpoint,
+                )
+            }
+            renderer.isEpisode -> {
+                val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
+                EpisodeItem(
+                    id = renderer.playlistItemData?.videoId ?: return null,
+                    title =
+                        renderer.flexColumns
+                            .firstOrNull()
+                            ?.musicResponsiveListItemFlexColumnRenderer
+                            ?.text
+                            ?.runs
+                            ?.firstOrNull()
+                            ?.text ?: return null,
+                    author =
+                        secondaryLine.firstOrNull()?.firstOrNull()?.let {
+                            Artist(
+                                name = it.text,
+                                id = it.navigationEndpoint?.browseEndpoint?.browseId,
+                            )
+                        },
+                    podcast =
+                        secondaryLine.getOrNull(1)?.firstOrNull()?.takeIf {
+                            it.navigationEndpoint?.browseEndpoint != null
+                        }?.let {
+                            Album(
+                                name = it.text,
+                                id = it.navigationEndpoint?.browseEndpoint?.browseId!!,
+                            )
+                        },
+                    duration =
+                        secondaryLine
+                            .lastOrNull()
+                            ?.firstOrNull()
+                            ?.text
+                            ?.parseTime(),
+                    publishDateText =
+                        secondaryLine
+                            .getOrNull(2)
+                            ?.firstOrNull()
+                            ?.text,
+                    thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    explicit =
+                        renderer.badges?.find {
+                            it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
+                        } != null,
+                    endpoint = renderer.overlay
+                        ?.musicItemThumbnailOverlayRenderer
+                        ?.content
+                        ?.musicPlayButtonRenderer
+                        ?.playNavigationEndpoint
+                        ?.watchEndpoint,
+                    libraryAddToken = libraryTokens.addToken,
+                    libraryRemoveToken = libraryTokens.removeToken,
+                )
+            }
             else -> null
         }
     }

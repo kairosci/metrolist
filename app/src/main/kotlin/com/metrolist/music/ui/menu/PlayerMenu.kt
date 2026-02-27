@@ -502,9 +502,13 @@ fun PlayerMenu(
         }
         // Media preview removed for structural muxed feature
         item {
+            // Check if this is a podcast episode (album ID doesn't start with MPREb_)
+            val isPodcast = mediaMetadata.album?.let { !it.id.startsWith("MPREb_") } ?: false
+
             Material3MenuGroup(
                 items = buildList {
-                    if (mediaMetadata.artists.isNotEmpty()) {
+                    // Don't show "View Artist" for podcasts - only show "View Podcast"
+                    if (artists.isNotEmpty() && !isPodcast) {
                         add(
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.artists)) },
@@ -523,6 +527,270 @@ fun PlayerMenu(
                                     } else {
                                         showSelectArtistDialog = true
                                     }
+                                }
+                            )
+                        )
+                    }
+                    if (mediaMetadata.album != null) {
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(if (isPodcast) R.string.view_podcast else R.string.view_album)) },
+                                description = {
+                                    Text(
+                                        text = mediaMetadata.album.title,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(if (isPodcast) R.drawable.mic else R.drawable.album),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    if (isPodcast) {
+                                        navController.navigate("online_podcast/${mediaMetadata.album.id}")
+                                    } else {
+                                        navController.navigate("album/${mediaMetadata.album.id}")
+                                    }
+                                    playerBottomSheetState.collapseSoft()
+                                    onDismiss()
+                                }
+                            )
+                        )
+                    }
+                    // Add to Library option
+                    val isInLibrary = librarySong?.song?.inLibrary != null
+                    add(
+                        Material3MenuItemData(
+                            title = { 
+                                Text(
+                                    text = stringResource(
+                                        if (isInLibrary) R.string.remove_from_library
+                                        else R.string.add_to_library
+                                    )
+                                )
+                            },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (isInLibrary) R.drawable.library_add_check
+                                        else R.drawable.library_add
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            onClick = {
+                                playerConnection.toggleLibrary()
+                                onDismiss()
+                            }
+                        )
+                    )
+                }
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        item {
+            Material3MenuGroup(
+                items = listOf(
+                    when (download?.state) {
+                        Download.STATE_COMPLETED -> {
+                            Material3MenuItemData(
+                                title = {
+                                    Text(
+                                        text = stringResource(R.string.remove_download)
+                                    )
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.offline),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    DownloadService.sendRemoveDownload(
+                                        context,
+                                        ExoDownloadService::class.java,
+                                        mediaMetadata.id,
+                                        false,
+                                    )
+                                }
+                            )
+                        }
+
+                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.downloading)) },
+                                icon = {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                },
+                                onClick = {
+                                    DownloadService.sendRemoveDownload(
+                                        context,
+                                        ExoDownloadService::class.java,
+                                        mediaMetadata.id,
+                                        false,
+                                    )
+                                }
+                            )
+                        }
+
+                        else -> {
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.action_download)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.download),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    database.transaction {
+                                        insert(mediaMetadata)
+                                    }
+                                    val downloadRequest =
+                                        DownloadRequest
+                                            .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
+                                            .setCustomCacheKey(mediaMetadata.id)
+                                            .setData(mediaMetadata.title.toByteArray())
+                                            .build()
+                                    DownloadService.sendAddDownload(
+                                        context,
+                                        ExoDownloadService::class.java,
+                                        downloadRequest,
+                                        false,
+                                    )
+                                }
+                            )
+                        }
+                    }
+                )
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        item {
+            Material3MenuGroup(
+                items = buildList {
+                    add(
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.listen_together)) },
+                            icon = {
+                                // Show a small badge when there are pending suggestions
+                                Box {
+                                    Icon(
+                                        painter = painterResource(R.drawable.group),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    if (pendingSuggestions.isNotEmpty()) {
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .offset(x = 8.dp, y = (-6).dp)
+                                                .align(Alignment.TopEnd)
+                                        ) {
+                                            Text(
+                                                text = pendingSuggestions.size.toString(),
+                                                color = MaterialTheme.colorScheme.onPrimary,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            onClick = { showListenTogetherDialog = true }
+                        )
+                    )
+                    if (isListenTogetherGuest) {
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.resync)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.replay),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    listenTogetherManager.requestSync()
+                                    onDismiss()
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        item {
+            Material3MenuGroup(
+                items = buildList {
+                    add(
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.details)) },
+                            description = { Text(text = stringResource(R.string.details_desc)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.info),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            onClick = {
+                                onShowDetailsDialog()
+                                onDismiss()
+                            }
+                        )
+                    )
+
+                    if (isQueueTrigger != true) {
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.equalizer)) },
+                                description = { Text(text = stringResource(R.string.equalizer_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.equalizer),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    navController.navigate("equalizer")
+                                    onDismiss()
+                                }
+                            )
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.advanced)) },
+                                description = { Text(text = stringResource(R.string.advanced_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.tune),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    showPitchTempoDialog = true
                                 }
                             )
                         )

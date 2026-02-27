@@ -1,8 +1,3 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
 package com.metrolist.music.ui.component
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -108,7 +103,7 @@ fun RandomizeGridItem(
                 .clip(CircleShape)
                 .background(dotColor)
         )
-
+        
         // Loading Indicator overlay
         Box(modifier = Modifier.alpha(loadingAlpha)) {
             LoadingIndicator(

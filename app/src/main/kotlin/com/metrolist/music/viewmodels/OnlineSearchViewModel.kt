@@ -44,7 +44,7 @@ constructor(
     } catch (e: IllegalArgumentException) {
         savedStateHandle.get<String>("query")!!
     }
-    val filter = MutableStateFlow<YouTube.SearchFilter?>(YouTube.SearchFilter.FILTER_SONG)
+    val filter = MutableStateFlow<YouTube.SearchFilter?>(null)
     var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
     val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
 

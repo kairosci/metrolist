@@ -6,6 +6,7 @@
 package com.metrolist.music.models
 
 import androidx.compose.runtime.Immutable
+import com.metrolist.innertube.models.EpisodeItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
 import com.metrolist.music.db.entities.Song
@@ -33,8 +34,10 @@ fun SongItem.toMediaMetadata(): MediaMetadata = MediaMetadata(
     suggestedBy = null,
     squareThumbnailUrl = this.squareThumbnail,
     artworkUrl = null, // Not directly in SongItem
-    videoId = null // Not directly in SongItem
+    videoId = null, // Not directly in SongItem
+    isEpisode = this.isEpisode
 )
+
 
 @Immutable
 data class MediaMetadata(
@@ -56,6 +59,7 @@ data class MediaMetadata(
     val squareThumbnailUrl: String? = null,
     val artworkUrl: String? = null,
     val videoId: String? = null,
+    val isEpisode: Boolean = false,
 ) : Serializable {
     val isVideoSong: Boolean
         get() = musicVideoType != null && musicVideoType != MUSIC_VIDEO_TYPE_ATV
@@ -91,7 +95,9 @@ data class MediaMetadata(
             libraryAddToken = libraryAddToken,
             libraryRemoveToken = libraryRemoveToken,
             isVideo = isVideoSong,
-            squareThumbnailUrl = squareThumbnailUrl
+            squareThumbnailUrl = squareThumbnailUrl,
+            isEpisode = isEpisode
+
         )
 }
 
@@ -131,5 +137,33 @@ fun Song.toMediaMetadata() =
         musicVideoType = if (song.isVideo) "MUSIC_VIDEO_TYPE_OMV" else MUSIC_VIDEO_TYPE_ATV,
         squareThumbnailUrl = song.squareThumbnailUrl?.resize(544, 544),
         artworkUrl = song.artworkUrl,
-        videoId = song.videoId
+        videoId = song.videoId,
+        isEpisode = song.isEpisode,
+
+    )
+
+
+fun EpisodeItem.toMediaMetadata() =
+    MediaMetadata(
+        id = id,
+        title = title,
+        artists = listOfNotNull(author).map {
+            MediaMetadata.Artist(
+                id = it.id,
+                name = it.name,
+            )
+        },
+        duration = duration ?: -1,
+        thumbnailUrl = thumbnail.resize(544, 544),
+        album = podcast?.let {
+            MediaMetadata.Album(
+                id = it.id,
+                title = it.name,
+            )
+        },
+        explicit = explicit,
+        suggestedBy = null,
+        isEpisode = true,
+        libraryAddToken = libraryAddToken,
+        libraryRemoveToken = libraryRemoveToken,
     )
