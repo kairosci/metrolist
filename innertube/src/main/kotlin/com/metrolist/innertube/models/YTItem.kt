@@ -1,3 +1,8 @@
+/**
+ * Metrolist Project (C) 2026
+ * Licensed under GPL-3.0 | See git history for contributors
+ */
+
 package com.metrolist.innertube.models
 
 import com.metrolist.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
@@ -30,6 +35,7 @@ data class SongItem(
     val chartPosition: Int? = null,
     val chartChange: String? = null,
     override val thumbnail: String,
+    val squareThumbnail: String? = null,
     override val explicit: Boolean = false,
     val endpoint: WatchEndpoint? = null,
     val setVideoId: String? = null,
@@ -52,6 +58,7 @@ data class AlbumItem(
     val artists: List<Artist>?,
     val year: Int? = null,
     override val thumbnail: String,
+    val squareThumbnail: String? = null,
     override val explicit: Boolean = false,
 ) : YTItem() {
     override val shareLink: String
@@ -100,6 +107,13 @@ fun <T : YTItem> List<T>.filterExplicit(enabled: Boolean = true) =
 fun <T : YTItem> List<T>.filterVideoSongs(disableVideos: Boolean = false) =
     if (disableVideos) {
         filterNot { it is SongItem && it.isVideoSong }
+    } else {
+        this
+    }
+
+fun <T : YTItem> List<T>.filterYoutubeShorts(enabled: Boolean = false) =
+    if (enabled) {
+        filterNot { it is PlaylistItem && it.id.startsWith("SS") }
     } else {
         this
     }

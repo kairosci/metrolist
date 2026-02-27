@@ -130,11 +130,13 @@ import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
+import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarAnimationSpec
 import com.metrolist.music.constants.NavigationBarHeight
+import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.SYSTEM_DEFAULT
@@ -214,7 +216,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var syncUtils: SyncUtils
-    
+
     @Inject
     lateinit var listenTogetherManager: com.metrolist.music.listentogether.ListenTogetherManager
 
@@ -282,8 +284,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (dataStore.get(StopMusicOnTaskClearKey, false) && 
-            playerConnection?.isPlaying?.value == true && 
+        if (dataStore.get(StopMusicOnTaskClearKey, false) &&
+            playerConnection?.isPlaying?.value == true &&
             isFinishing
         ) {
             stopService(Intent(this, MusicService::class.java))
@@ -307,7 +309,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        
+
         // Initialize Listen Together manager
         listenTogetherManager.initialize()
 
@@ -366,7 +368,7 @@ class MainActivity : ComponentActivity() {
                     val updatesEnabled = dataStore.get(CheckForUpdatesKey, true)
                     val notifEnabled = dataStore.get(UpdateNotificationsEnabledKey, true)
                     if (!updatesEnabled) return@withContext
-                    
+
                     Updater.checkForUpdate().onSuccess { (releaseInfo, hasUpdate) ->
                         if (releaseInfo != null) {
                             onLatestVersionNameChange(releaseInfo.versionName)
@@ -517,7 +519,14 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
-                val navigationItems = remember { Screens.MainScreens }
+                val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
+                val navigationItems = remember(listenTogetherInTopBar) { 
+                    if (listenTogetherInTopBar) {
+                        Screens.MainScreens.filter { it != Screens.ListenTogether }
+                    } else {
+                        Screens.MainScreens
+                    }
+                }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
                 val defaultOpenTab = remember {
@@ -636,13 +645,11 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(navBackStackEntry) {
                     if (inSearchScreen) {
                         val searchQuery = withContext(Dispatchers.IO) {
-                            if (navBackStackEntry?.arguments?.getString("query")!!.contains("%")) {
-                                navBackStackEntry?.arguments?.getString("query")!!
-                            } else {
-                                URLDecoder.decode(
-                                    navBackStackEntry?.arguments?.getString("query")!!,
-                                    "UTF-8"
-                                )
+                            val rawQuery = navBackStackEntry?.arguments?.getString("query")!!
+                            try {
+                                URLDecoder.decode(rawQuery, "UTF-8")
+                            } catch (e: IllegalArgumentException) {
+                                rawQuery
                             }
                         }
                         onQueryChange(
@@ -706,9 +713,13 @@ class MainActivity : ComponentActivity() {
 
                 var shouldShowTopBar by rememberSaveable { mutableStateOf(false) }
 
-                LaunchedEffect(navBackStackEntry) {
-                    shouldShowTopBar = navBackStackEntry?.destination?.route in topLevelScreens && 
-                        navBackStackEntry?.destination?.route != "settings"
+                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar) {
+                    val currentRoute = navBackStackEntry?.destination?.route
+                    val isListenTogetherScreen = currentRoute == Screens.ListenTogether.route || 
+                        currentRoute == "listen_together_from_topbar"
+                    shouldShowTopBar = currentRoute in topLevelScreens &&
+                        currentRoute != "settings" &&
+                        !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
 
                 val coroutineScope = rememberCoroutineScope()
@@ -747,6 +758,12 @@ class MainActivity : ComponentActivity() {
 
                 var showAccountDialog by remember { mutableStateOf(false) }
 
+                val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
+                val eventCount by database.eventCount().collectAsState(initial = 0)
+                val showHistoryButton = remember(pauseListenHistory, eventCount) {
+                    !(pauseListenHistory && eventCount == 0)
+                }
+
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
                 CompositionLocalProvider(
@@ -777,17 +794,27 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         actions = {
-                                            IconButton(onClick = { navController.navigate("history") }) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.history),
-                                                    contentDescription = stringResource(R.string.history)
-                                                )
+                                            if (showHistoryButton) {
+                                                IconButton(onClick = { navController.navigate("history") }) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.history),
+                                                        contentDescription = stringResource(R.string.history)
+                                                    )
+                                                }
                                             }
                                             IconButton(onClick = { navController.navigate("stats") }) {
                                                 Icon(
                                                     painter = painterResource(R.drawable.stats),
                                                     contentDescription = stringResource(R.string.stats)
                                                 )
+                                            }
+                                            if (listenTogetherInTopBar) {
+                                                IconButton(onClick = { navController.navigate("listen_together_from_topbar") }) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.group_outlined),
+                                                        contentDescription = stringResource(R.string.together)
+                                                    )
+                                                }
                                             }
                                             IconButton(onClick = { showAccountDialog = true }) {
                                                 BadgedBox(badge = {
@@ -856,7 +883,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
-                            
+
                             val onSearchLongClick: () -> Unit = remember(navController) {
                                 {
                                     navController.navigate("recognition") {

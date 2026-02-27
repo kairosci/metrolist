@@ -1,3 +1,8 @@
+/**
+ * Metrolist Project (C) 2026
+ * Licensed under GPL-3.0 | See git history for contributors
+ */
+
 package com.metrolist.innertube.pages
 
 import com.metrolist.innertube.models.Album
@@ -50,7 +55,8 @@ object SearchPage {
                             )
                         } ?: return null,
                     album =
-                        secondaryLine.getOrNull(1)?.firstOrNull()?.takeIf { it.navigationEndpoint?.browseEndpoint != null }?.let {
+                        secondaryLine.getOrNull(1)?.firstOrNull()
+                            ?.takeIf { it.navigationEndpoint?.browseEndpoint != null }?.let {
                             Album(
                                 name = it.text,
                                 id = it.navigationEndpoint?.browseEndpoint?.browseId!!,
@@ -64,6 +70,7 @@ object SearchPage {
                             ?.parseTime(),
                     musicVideoType = renderer.musicVideoType,
                     thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    squareThumbnail = renderer.thumbnail?.croppedSquareThumbnailRenderer?.getThumbnailUrl(),
                     explicit =
                         renderer.badges?.find {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -72,6 +79,7 @@ object SearchPage {
                     libraryRemoveToken = libraryTokens.removeToken
                 )
             }
+
             renderer.isArtist -> {
                 ArtistItem(
                     id = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null,
@@ -101,6 +109,7 @@ object SearchPage {
                             ?.watchPlaylistEndpoint ?: return null,
                 )
             }
+
             renderer.isAlbum -> {
                 AlbumItem(
                     browseId = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null,
@@ -135,12 +144,14 @@ object SearchPage {
                             ?.text
                             ?.toIntOrNull(),
                     thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    squareThumbnail = renderer.thumbnail?.croppedSquareThumbnailRenderer?.getThumbnailUrl(),
                     explicit =
                         renderer.badges?.find {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                         } != null,
                 )
             }
+
             renderer.isPlaylist -> {
                 PlaylistItem(
                     id =
@@ -195,6 +206,7 @@ object SearchPage {
                             ?.watchPlaylistEndpoint ?: return null,
                 )
             }
+
             else -> null
         }
     }
