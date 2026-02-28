@@ -94,10 +94,7 @@ data class MediaMetadata(
             inLibrary = inLibrary,
             libraryAddToken = libraryAddToken,
             libraryRemoveToken = libraryRemoveToken,
-            isVideo = isVideoSong,
-            squareThumbnailUrl = squareThumbnailUrl,
-            isEpisode = isEpisode
-
+            isVideo = isVideoSong
         )
 }
 
@@ -132,16 +129,8 @@ fun Song.toMediaMetadata() =
         inLibrary = song.inLibrary,
         libraryAddToken = song.libraryAddToken,
         libraryRemoveToken = song.libraryRemoveToken,
-        suggestedBy = null,
-        setVideoId = song.videoId,
-        musicVideoType = if (song.isVideo) "MUSIC_VIDEO_TYPE_OMV" else MUSIC_VIDEO_TYPE_ATV,
-        squareThumbnailUrl = song.squareThumbnailUrl?.resize(544, 544),
-        artworkUrl = song.artworkUrl,
-        videoId = song.videoId,
-        isEpisode = song.isEpisode,
-
+        suggestedBy = null
     )
-
 
 fun EpisodeItem.toMediaMetadata() =
     MediaMetadata(

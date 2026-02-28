@@ -1530,7 +1530,7 @@ class MusicService :
                                 YouTube.next(
                                     WatchEndpoint(
                                         videoId = currentSong.id
-
+                                    )
                                 ).onSuccess { radioResult ->
                                     val filteredItems = radioResult.items
                                         .filter { it.id != currentSong.id }

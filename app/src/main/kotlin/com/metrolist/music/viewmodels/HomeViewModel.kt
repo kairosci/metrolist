@@ -166,7 +166,7 @@ class HomeViewModel @Inject constructor(
                     filled.addAll(available.take(needed))
                 }
             }
-            
+
             filled.take(targetSize)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -274,7 +274,7 @@ class HomeViewModel @Inject constructor(
         if (likedSongs.isEmpty()) return
 
         val seeds = likedSongs.shuffled().distinctBy { it.id }.take(5)
-        
+
         // Use a synchronized list to collect results safely from concurrent coroutines
         val items = java.util.Collections.synchronizedList(mutableListOf<DailyDiscoverItem>())
 
@@ -311,7 +311,7 @@ class HomeViewModel @Inject constructor(
                 }
             }.forEach { it.join() }
         }
-        
+
         // Final deduplication just in case multiple seeds recommended the same song
         dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
     }
@@ -376,8 +376,8 @@ class HomeViewModel @Inject constructor(
                     YouTube.artist(seed.id).onSuccess { page ->
                         page.sections.forEach { section ->
                             section.items.filterIsInstance<PlaylistItem>().forEach { playlist ->
-                                if (playlist.author?.name != "YouTube Music" && 
-                                    playlist.author?.name != "YouTube" && 
+                                if (playlist.author?.name != "YouTube Music" &&
+                                    playlist.author?.name != "YouTube" &&
                                     playlist.author?.name != "Playlist" &&
                                     playlist.author?.name != seed.artist.name &&
                                     !playlist.id.startsWith("RD") &&
@@ -390,15 +390,15 @@ class HomeViewModel @Inject constructor(
                     }
                 }
             }
-            
+
             songSeeds.map { seed ->
                 launch(Dispatchers.IO) {
                     val endpoint = YouTube.next(WatchEndpoint(videoId = seed.id)).getOrNull()?.relatedEndpoint
                     if (endpoint != null) {
                         YouTube.related(endpoint).onSuccess { page ->
                             page.playlists.forEach { playlist ->
-                                if (playlist.author?.name != "YouTube Music" && 
-                                    playlist.author?.name != "YouTube" && 
+                                if (playlist.author?.name != "YouTube Music" &&
+                                    playlist.author?.name != "YouTube" &&
                                     playlist.author?.name != "Playlist" &&
                                     !playlist.id.startsWith("RD") &&
                                     !playlist.id.startsWith("OLAK")
@@ -638,17 +638,6 @@ class HomeViewModel @Inject constructor(
         // Fetch episodes for later from official API
         YouTube.episodesForLater().onSuccess { episodes ->
             episodesForLater.value = episodes
-        }.onFailure {
-            reportException(it)
-        }
-    }
-
-    private suspend fun loadAccountPlaylists() {
-        val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-        YouTube.library("FEmusic_liked_playlists").completed().onSuccess {
-            accountPlaylists.value = it.items.filterIsInstance<PlaylistItem>()
-                .filterNot { it.id == "SE" }
-                .filterYoutubeShorts(hideYoutubeShorts)
         }.onFailure {
             reportException(it)
         }

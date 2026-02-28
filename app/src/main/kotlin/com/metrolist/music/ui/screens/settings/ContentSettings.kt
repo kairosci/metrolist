@@ -693,6 +693,38 @@ fun ContentSettings(
                                         onClick = { onHideExplicitChange(!hideExplicit) }
                                 ),
                                 Material3SettingsItem(
+                                        icon = painterResource(R.drawable.slow_motion_video),
+                                        title = { Text(stringResource(R.string.hide_video_songs)) },
+                                        trailingContent = {
+                                            Switch(
+                                                    checked = hideVideoSongs,
+                                                    onCheckedChange = onHideVideoSongsChange,
+                                                    thumbContent = {
+                                                        Icon(
+                                                                painter =
+                                                                        painterResource(
+                                                                                id =
+                                                                                        if (hideVideoSongs
+                                                                                        )
+                                                                                                R.drawable
+                                                                                                        .check
+                                                                                        else
+                                                                                                R.drawable
+                                                                                                        .close
+                                                                        ),
+                                                                contentDescription = null,
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                SwitchDefaults
+                                                                                        .IconSize
+                                                                        )
+                                                        )
+                                                    }
+                                            )
+                                        },
+                                        onClick = { onHideVideoSongsChange(!hideVideoSongs) }
+                                ),
+                                Material3SettingsItem(
                                         icon = painterResource(R.drawable.hide_image),
                                         title = {
                                             Text(stringResource(R.string.hide_youtube_shorts))
@@ -726,50 +758,6 @@ fun ContentSettings(
                                         },
                                         onClick = { onHideYoutubeShortsChange(!hideYoutubeShorts) }
                                 )
-                        )
-                    },
-                    onClick = { onHideExplicitChange(!hideExplicit) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.slow_motion_video),
-                    title = { Text(stringResource(R.string.hide_video_songs)) },
-                    trailingContent = {
-                        Switch(
-                            checked = hideVideoSongs,
-                            onCheckedChange = onHideVideoSongsChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (hideVideoSongs) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onHideVideoSongsChange(!hideVideoSongs) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.hide_image),
-                    title = { Text(stringResource(R.string.hide_youtube_shorts)) },
-                    trailingContent = {
-                        Switch(
-                            checked = hideYoutubeShorts,
-                            onCheckedChange = onHideYoutubeShortsChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (hideYoutubeShorts) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onHideYoutubeShortsChange(!hideYoutubeShorts) }
-                )
             )
         )
 
@@ -977,10 +965,6 @@ fun ContentSettings(
                                             onClick = { onProxyEnabledChange(!proxyEnabled) }
                                     )
                             )
-                        },
-                        onClick = { onProxyEnabledChange(!proxyEnabled) }
-                    )
-                )
                 if (proxyEnabled) {
                     add(
                         Material3SettingsItem(
@@ -1162,30 +1146,7 @@ fun ContentSettings(
                                         },
                                         onClick = { onEnableSimpMusicChange(!enableSimpMusic) }
                                 ),
-                                Material3SettingsItem(
-                                        icon = painterResource(R.drawable.lyrics),
-                                        title = {
-                                            Text(stringResource(R.string.set_first_lyrics_provider))
-                                        },
-                                        description = {
-                                            Text(
-                                                    when (preferredProvider) {
-                                                        PreferredLyricsProvider.LRCLIB -> "LrcLib"
-                                                        PreferredLyricsProvider.KUGOU -> "KuGou"
-                                                        PreferredLyricsProvider.BETTER_LYRICS ->
-                                                                "Better Lyrics"
-                                                        PreferredLyricsProvider.SIMPMUSIC ->
-                                                                "SimpMusic"
-                                                    }
-                                            )
-                                        },
-                                        onClick = {
-                                            if (enabledProvidersCount >= 2) {
-                                                showPreferredProviderDialog = true
-                                            }
-                                        },
-                                        enabled = enabledProvidersCount >= 2
-                                ),
+
                                 Material3SettingsItem(
                                         icon = painterResource(R.drawable.language_korean_latin),
                                         title = {
@@ -1240,6 +1201,10 @@ fun ContentSettings(
                                 QuickPicks.LAST_LISTEN -> stringResource(R.string.last_song_listened)
                             }
                         )
+                    },
+                    onClick = { showQuickPicksDialog = true }
+                )
+            )
         )
         Spacer(modifier = Modifier.height(16.dp))
     }

@@ -24,7 +24,6 @@ import com.metrolist.innertube.models.YouTubeClient.Companion.WEB
 import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_CREATOR
 import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import com.metrolist.innertube.models.response.PlayerResponse
-import com.metrolist.innertube.utils.PoTokenGenerator
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.potoken.PoTokenGenerator
@@ -441,127 +440,6 @@ object YTPlayerUtils {
                         }
                     }
                 }
-
-                Timber.tag(logTag).d("Format found: ${format.mimeType}, bitrate: ${format.bitrate}")
-
-                streamUrl = findUrlOrNull(format, videoId, responseToUse, skipNewPipe = wasOriginallyAgeRestricted)
-                if (streamUrl == null) {
-                    Timber.tag(logTag).d("Stream URL not found for format")
-                    continue
-                }
-
-                // Apply n-transform for throttle parameter handling
-                val currentClient = if (clientIndex == -1) {
-                    usedAgeRestrictedClient ?: MAIN_CLIENT
-                } else {
-                    STREAM_FALLBACK_CLIENTS[clientIndex]
-                }
-
-                // Check if this is a privately owned track
-                val isPrivatelyOwnedTrack = streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
-
-                // Apply n-transform for web clients, age-restricted, or private tracks.
-                // All YouTube web stream URLs contain the 'n' throttle param and must be
-                // transformed; age-restricted embedded-client URLs are no exception.
-                val needsNTransform = currentClient.useWebPoTokens ||
-                    currentClient.clientName in listOf(
-                        "WEB", "WEB_REMIX", "WEB_CREATOR", "TVHTML5",
-                        "TVHTML5_SIMPLY_EMBEDDED_PLAYER"
-                    ) ||
-                    isPrivatelyOwnedTrack ||
-                    wasOriginallyAgeRestricted
-
-                if (needsNTransform) {
-                    try {
-                        Timber.tag(logTag).d("Applying n-transform to stream URL for ${currentClient.clientName}")
-                        streamUrl = NTransformSolver.transformNParamInUrl(streamUrl!!)
-
-                        // Append pot= parameter (base64 - do NOT Uri.encode).
-                        // pot= is required for web-PoToken clients (WEB_REMIX, TVHTML5)
-                        // and for the embedded player used to bypass age-restriction
-                        // (TVHTML5_SIMPLY_EMBEDDED_PLAYER).
-                        // Do NOT append for cookie-auth clients (WEB_CREATOR, WEB) because
-                        // their CDN URLs are already authenticated via SAPISID and adding
-                        // pot= can cause the server to reject the request with 403.
-                        val needsPot = currentClient.useWebPoTokens ||
-                            (isPrivatelyOwnedTrack && currentClient.clientName == "TVHTML5") ||
-                            (wasOriginallyAgeRestricted &&
-                                currentClient.clientName == "TVHTML5_SIMPLY_EMBEDDED_PLAYER")
-                        if (needsPot && sessionId != null) {
-                            Timber.tag(logTag).d("Appending pot= parameter to stream URL")
-                            val streamingPoToken = PoTokenGenerator.generateContentToken(sessionId, videoId)
-                            val separator = if ("?" in streamUrl!!) "&" else "?"
-                            streamUrl = "${streamUrl}${separator}pot=${streamingPoToken}"
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag(logTag).e(e, "N-transform or pot append failed: ${e.message}")
-                        // Continue with original URL
-                    }
-                }
-
-                streamExpiresInSeconds = streamPlayerResponse.streamingData?.expiresInSeconds
-                if (streamExpiresInSeconds == null) {
-                    Timber.tag(logTag).e("Missing stream expire time")
-                    throw Exception("Missing stream expire time")
-                }
-
-                Timber.tag(logTag).d("Stream expires in: $streamExpiresInSeconds seconds")
-
-                // Check if this is a privately owned track (uploaded song).
-                // Use both the stream response AND the main response flags so that
-                // clients like TVHTML5 (which may not include musicVideoType) are also
-                // correctly identified as serving a private track.
-                val isPrivatelyOwned = isPrivateTrack ||
-                    streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
-
-                if (clientIndex == STREAM_FALLBACK_CLIENTS.size - 1 || isPrivatelyOwned) {
-                    /** skip [validateStatus] for last client or private tracks */
-                    if (isPrivatelyOwned) {
-                        Timber.tag(logTag).d("Skipping validation for privately owned track: ${currentClient.clientName}")
-                    } else {
-                        Timber.tag(logTag).d("Using last fallback client without validation: ${STREAM_FALLBACK_CLIENTS[clientIndex].clientName}")
-                    }
-                    Timber.tag(TAG)
-                        .i("Playback: client=${currentClient.clientName}, videoId=$videoId, private=$isPrivatelyOwned")
-                    break
-                }
-
-                if (validateStatus(streamUrl!!)) {
-                    // working stream found
-                    Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
-                    // Log for release builds
-                    Timber.tag(TAG).i("Playback: client=${currentClient.clientName}, videoId=$videoId")
-                    break
-                } else {
-                    Timber.tag(logTag).d("Stream validation failed for client: ${currentClient.clientName}")
-                }
-
-                Timber.tag(logTag)
-                        .d(
-                                "Successfully obtained playback data with format: ${format.mimeType}, bitrate: ${format.bitrate}"
-                        )
-                if (isUploadedTrack) {
-                    println(
-                            "[PLAYBACK_DEBUG] SUCCESS: Got playback data for uploaded track - format=${format.mimeType}, streamUrl=${
-                    streamUrl?.take(
-                        100
-                    )
-                }..."
-                    )
-                }
-                PlaybackData(
-                        audioConfig,
-                        videoDetails,
-                        playbackTracking,
-                        format,
-                        streamUrl,
-                        streamExpiresInSeconds,
-                        isVideoFormat = format.width != null,
-                )
-            }
-                    .onFailure { e ->
-                        Timber.tag(logTag).e(e, "Exception during playback for videoId=$videoId")
-                    }
 
         if (streamPlayerResponse == null) {
             Timber.tag(logTag).e("Bad stream player response - all clients failed")
