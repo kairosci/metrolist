@@ -70,8 +70,14 @@ import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.viewmodels.LyricsMenuViewModel
-import com.metrolist.music.constants.AutoTranslateLyricsKey
 import com.metrolist.music.constants.OpenRouterApiKey
+import com.metrolist.music.constants.DeeplApiKey
+import com.metrolist.music.constants.AiProviderKey
+import com.metrolist.music.constants.TranslateLanguageKey
+import com.metrolist.music.constants.TranslateModeKey
+import com.metrolist.music.constants.OpenRouterBaseUrlKey
+import com.metrolist.music.constants.OpenRouterModelKey
+import com.metrolist.music.constants.DeeplFormalityKey
 import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.utils.rememberPreference
 
@@ -88,8 +94,20 @@ fun LyricsMenu(
     val context = LocalContext.current
     val database = LocalDatabase.current
     
-    val autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, false)
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
+    val deeplApiKey by rememberPreference(DeeplApiKey, "")
+    val aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    val translateLanguage by rememberPreference(TranslateLanguageKey, "en")
+    val translateMode by rememberPreference(TranslateModeKey, "Literal")
+    val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
+    val openRouterModel by rememberPreference(OpenRouterModelKey, "google/gemini-2.5-flash-lite")
+    val deeplFormality by rememberPreference(DeeplFormalityKey, "default")
+
+    val hasApiKey = if (aiProvider == "DeepL") deeplApiKey.isNotBlank() else openRouterApiKey.isNotBlank()
+    
+    // Observe the authoritative translation-active state from the singleton; this persists
+    // correctly across menu open/close cycles and avoids the lyricsProvider() race condition.
+    val hasTranslations by LyricsTranslationHelper.hasActiveTranslations.collectAsState()
 
     var showEditDialog by rememberSaveable {
         mutableStateOf(false)
@@ -416,8 +434,8 @@ fun LyricsMenu(
         item {
             Material3MenuGroup(
                 items = buildList {
-                    // Add "Translate with AI" option if auto-translate is disabled
-                    if (!autoTranslateLyrics && openRouterApiKey.isNotBlank()) {
+                    // Add translation toggle option if API key is configured
+                    if (hasApiKey) {
                         add(
                             Material3MenuItemData(
                                 title = { Text(stringResource(R.string.ai_lyrics_translation)) },
@@ -428,9 +446,41 @@ fun LyricsMenu(
                                     )
                                 },
                                 onClick = {
-                                    onDismiss()
-                                    LyricsTranslationHelper.triggerManualTranslation()
+                                    if (hasTranslations) {
+                                        // Remove translations
+                                        lyricsProvider()?.let { lyrics ->
+                                            val clearedLyrics = LyricsTranslationHelper.clearTranslations(lyrics)
+                                            database.query {
+                                                upsert(clearedLyrics)
+                                            }
+                                            // Resets hasActiveTranslations and clears in-memory translations
+                                            LyricsTranslationHelper.triggerClearTranslations()
+                                        }
+                                    } else {
+                                        // Trigger translation
+                                        LyricsTranslationHelper.triggerManualTranslation()
+                                    }
                                 },
+                                trailingContent = {
+                                    Switch(
+                                        checked = hasTranslations,
+                                        onCheckedChange = { newCheckedState ->
+                                            if (newCheckedState) {
+                                                // Enable translations – hasActiveTranslations updates when done
+                                                LyricsTranslationHelper.triggerManualTranslation()
+                                            } else {
+                                                // Disable translations – triggerClearTranslations resets hasActiveTranslations
+                                                lyricsProvider()?.let { lyrics ->
+                                                    val clearedLyrics = LyricsTranslationHelper.clearTranslations(lyrics)
+                                                    database.query {
+                                                        upsert(clearedLyrics)
+                                                    }
+                                                    LyricsTranslationHelper.triggerClearTranslations()
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
                             )
                         )
                     }

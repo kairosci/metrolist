@@ -36,6 +36,7 @@ import com.metrolist.music.extensions.isSyncEnabled
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.util.logging.Logger
 
@@ -44,6 +45,7 @@ fun CreatePlaylistDialog(
     onDismiss: () -> Unit,
     initialTextFieldValue: String? = null,
     allowSyncing: Boolean = true,
+    onPlaylistCreated: ((String) -> Unit)? = null,
 ) {
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
@@ -67,16 +69,22 @@ fun CreatePlaylistDialog(
                     return@launch
                 } else null
 
+                val playlistEntity = PlaylistEntity(
+                    name = playlistName,
+                    browseId = browseId,
+                    bookmarkedAt = LocalDateTime.now(),
+                    isEditable = true,
+                )
+                
                 database.query {
-                    insert(
-                        PlaylistEntity(
-                            name = playlistName,
-                            browseId = browseId,
-                            bookmarkedAt = LocalDateTime.now(),
-                            isEditable = true,
-                        )
-                    )
+                    insert(playlistEntity)
                 }
+
+                withContext(Dispatchers.Main) {
+                    onPlaylistCreated?.invoke(playlistEntity.id)
+                }
+
+                onPlaylistCreated?.invoke(playlistEntity.id)
             }
         },
         extraContent = {

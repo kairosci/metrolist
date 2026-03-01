@@ -14,6 +14,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.utils.completed
 import com.metrolist.music.constants.AlbumFilter
 import com.metrolist.music.constants.AlbumFilterKey
 import com.metrolist.music.constants.AlbumSortDescendingKey
@@ -29,6 +31,7 @@ import com.metrolist.music.constants.ArtistSortType
 import com.metrolist.music.constants.ArtistSortTypeKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.LibraryFilter
 import com.metrolist.music.constants.PlaylistSortDescendingKey
 import com.metrolist.music.constants.PlaylistSortType
@@ -43,6 +46,7 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterExplicitAlbums
 import com.metrolist.music.extensions.filterVideoSongs
+import com.metrolist.music.extensions.filterYoutubeShorts
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.playback.DownloadUtil
 import com.metrolist.music.utils.SyncUtils
@@ -54,6 +58,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -92,9 +97,7 @@ constructor(
                     SongFilter.LIBRARY -> database.songs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                     SongFilter.LIKED -> database.likedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                     SongFilter.DOWNLOADED -> database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                    // Uploaded feature is temporarily disabled
-                    SongFilter.UPLOADED -> kotlinx.coroutines.flow.flowOf(emptyList())
-                    // SongFilter.UPLOADED -> database.uploadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+                    SongFilter.UPLOADED -> database.uploadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                 }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -106,9 +109,8 @@ constructor(
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLibrarySongs() }
     }
 
-    // Uploaded feature is temporarily disabled
     fun syncUploadedSongs() {
-        // viewModelScope.launch(Dispatchers.IO) { syncUtils.syncUploadedSongs() }
+        viewModelScope.launch(Dispatchers.IO) { syncUtils.syncUploadedSongs() }
     }
 }
 
@@ -187,9 +189,7 @@ constructor(
                 when (filter) {
                     AlbumFilter.LIKED -> database.albumsLiked(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
                     AlbumFilter.LIBRARY -> database.albums(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
-                    // Uploaded feature is temporarily disabled
-                    AlbumFilter.UPLOADED -> kotlinx.coroutines.flow.flowOf(emptyList())
-                    // AlbumFilter.UPLOADED -> database.albumsUploaded(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
+                    AlbumFilter.UPLOADED -> database.albumsUploaded(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
                 }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -235,11 +235,14 @@ constructor(
     val allPlaylists =
         context.dataStore.data
             .map {
-                it[PlaylistSortTypeKey].toEnum(PlaylistSortType.CREATE_DATE) to (it[PlaylistSortDescendingKey]
-                    ?: true)
+                Triple(
+                    it[PlaylistSortTypeKey].toEnum(PlaylistSortType.CREATE_DATE),
+                    it[PlaylistSortDescendingKey] ?: true,
+                    it[HideYoutubeShortsKey] ?: false
+                )
             }.distinctUntilChanged()
-            .flatMapLatest { (sortType, descending) ->
-                database.playlists(sortType, descending)
+            .flatMapLatest { (sortType, descending, hideYoutubeShorts) ->
+                database.playlists(sortType, descending).map { it.filterYoutubeShorts(hideYoutubeShorts) }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun sync() {
@@ -323,8 +326,12 @@ constructor(
         .flatMapLatest { hideExplicit ->
             database.albumsLiked(AlbumSortType.CREATE_DATE, true).map { it.filterExplicitAlbums(hideExplicit) }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    var playlists = database.playlists(PlaylistSortType.CREATE_DATE, true)
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    var playlists = context.dataStore.data
+        .map { it[HideYoutubeShortsKey] ?: false }
+        .distinctUntilChanged()
+        .flatMapLatest { hideYoutubeShorts ->
+            database.playlists(PlaylistSortType.CREATE_DATE, true).map { it.filterYoutubeShorts(hideYoutubeShorts) }
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -369,6 +376,103 @@ constructor(
                     }
             }
         }
+    }
+}
+
+@HiltViewModel
+class LibraryPodcastsViewModel
+@Inject
+constructor(
+    @ApplicationContext context: Context,
+    database: MusicDatabase,
+    private val syncUtils: SyncUtils,
+) : ViewModel() {
+    // Subscribed podcast channels synced from YT Music
+    val subscribedChannels = database.subscribedPodcasts()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    // SE "Episodes for Later" playlist fetched from YT Music (like AccountScreen)
+    private val _sePlaylist = MutableStateFlow<com.metrolist.innertube.models.PlaylistItem?>(null)
+    val sePlaylist = _sePlaylist.asStateFlow()
+
+    // RDPN "New Episodes" playlist fetched from YouTube Music (real thumbnail + episode count)
+    private val _rdpnPlaylist = MutableStateFlow<com.metrolist.innertube.models.PlaylistItem?>(null)
+    val rdpnPlaylist = _rdpnPlaylist.asStateFlow()
+
+    // Podcast host channels fetched from YT Music library/podcast_channels
+    private val _podcastChannels = MutableStateFlow<List<ArtistItem>>(emptyList())
+    val podcastChannels = _podcastChannels.asStateFlow()
+
+    // Downloaded podcast episodes
+    val downloadedEpisodes =
+        context.dataStore.data
+            .map {
+                Pair(
+                    it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE) to (it[SongSortDescendingKey] ?: true),
+                    it[HideExplicitKey] ?: false
+                )
+            }.distinctUntilChanged()
+            .flatMapLatest { (sortDesc, hideExplicit) ->
+                val (sortType, descending) = sortDesc
+                database.downloadedPodcastEpisodes(sortType, descending).map { it.filterExplicit(hideExplicit) }
+            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private suspend fun fetchSePlaylist() {
+        YouTube.library("FEmusic_liked_playlists").completed().onSuccess {
+            _sePlaylist.value = it.items
+                .filterIsInstance<com.metrolist.innertube.models.PlaylistItem>()
+                .find { it.id == "SE" }
+        }.onFailure {
+            timber.log.Timber.e(it, "[PODCAST] Failed to fetch SE playlist")
+        }
+    }
+
+    private suspend fun fetchPodcastChannels() {
+        YouTube.libraryPodcastChannels().onSuccess { page ->
+            val channels = page.items.filterIsInstance<ArtistItem>()
+            _podcastChannels.value = channels
+            timber.log.Timber.d("[PODCAST] Fetched ${channels.size} podcast channels from YT Music")
+        }.onFailure {
+            timber.log.Timber.e(it, "[PODCAST] Failed to fetch podcast channels")
+        }
+    }
+
+    private suspend fun fetchRdpnPlaylist() {
+        YouTube.newEpisodesPlaylistInfo().onSuccess { item ->
+            _rdpnPlaylist.value = item
+            timber.log.Timber.d("[PODCAST] RDPN playlist: ${item.title}, thumbnail: ${item.thumbnail}")
+        }.onFailure {
+            timber.log.Timber.e(it, "[PODCAST] Failed to fetch RDPN playlist info")
+        }
+    }
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            fetchSePlaylist()
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            fetchPodcastChannels()
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            fetchRdpnPlaylist()
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            syncUtils.syncPodcastSubscriptionsSuspend()
+        }
+    }
+
+    fun clearPodcastData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            syncUtils.clearPodcastData()
+        }
+    }
+
+    suspend fun refreshAll() {
+        fetchSePlaylist()
+        fetchPodcastChannels()
+        fetchRdpnPlaylist()
+        syncUtils.syncPodcastSubscriptionsSuspend()
+        syncUtils.syncEpisodesForLaterSuspend()
     }
 }
 
