@@ -5,6 +5,26 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
+# WEB_REMIX Streaming - NTransformSolver WebView JavaScript interface
+-keepclassmembers class com.metrolist.music.utils.cipher.NTransformSolver$SolverWebView {
+    @android.webkit.JavascriptInterface public *;
+}
+
+# Keep cipher utility classes (SignatureDeobfuscator, NTransformSolver, CipherManager, etc.)
+-keep class com.metrolist.music.utils.cipher.** { *; }
+-keep class com.metrolist.innertube.utils.PoTokenGenerator { *; }
+
+# Keep SignatureDeobfuscator inner types (Op, OpType) for reflection-safe serialization
+-keepclassmembers class com.metrolist.music.utils.cipher.SignatureDeobfuscator {
+    *;
+}
+
+# Keep coroutine continuation for WebView callbacks
+-keepclassmembers class * {
+    void resume(...);
+    void resumeWithException(...);
+}
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:
@@ -71,6 +91,10 @@
 -dontwarn javax.script.**
 -keep class jdk.dynalink.** { *; }
 -dontwarn jdk.dynalink.**
+
+## Listen Together Protobuf
+-keep class com.metrolist.music.listentogether.proto.** { *; }
+-keepclassmembers class com.metrolist.music.listentogether.proto.** { *; }
 
 ## Logging (does not affect Timber)
 -assumenosideeffects class android.util.Log {

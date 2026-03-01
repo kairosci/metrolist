@@ -36,6 +36,7 @@ import com.metrolist.music.ui.screens.playlist.CachePlaylistScreen
 import com.metrolist.music.ui.screens.playlist.LocalPlaylistScreen
 import com.metrolist.music.ui.screens.playlist.OnlinePlaylistScreen
 import com.metrolist.music.ui.screens.playlist.TopPlaylistScreen
+import com.metrolist.music.ui.screens.podcast.OnlinePodcastScreen
 import com.metrolist.music.ui.screens.search.OnlineSearchResult
 import com.metrolist.music.ui.screens.search.SearchScreen
 import com.metrolist.music.ui.screens.settings.AboutScreen
@@ -95,7 +96,13 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(Screens.ListenTogether.route) {
-        ListenTogetherScreen(navController)
+        ListenTogetherScreen(navController, showTopBar = false)
+    }
+
+    composable(
+        route = "listen_together_from_topbar",
+    ) {
+        ListenTogetherScreen(navController, showTopBar = true)
     }
 
     composable("history") {
@@ -243,6 +250,17 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(
+        route = "online_podcast/{podcastId}",
+        arguments = listOf(
+            navArgument("podcastId") {
+                type = NavType.StringType
+            },
+        ),
+    ) {
+        OnlinePodcastScreen(navController, scrollBehavior)
+    }
+
+    composable(
         route = "local_playlist/{playlistId}",
         arguments = listOf(
             navArgument("playlistId") {
@@ -347,7 +365,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("settings/integrations/discord") {
-        DiscordSettings(navController, scrollBehavior)
+        DiscordSettings(navController, scrollBehavior, snackbarHostState)
     }
 
     composable("settings/integrations/lastfm") {

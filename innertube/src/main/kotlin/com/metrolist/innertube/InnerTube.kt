@@ -218,6 +218,7 @@ class InnerTube {
         videoId: String,
         playlistId: String?,
         signatureTimestamp: Int?,
+        poToken: String? = null,
     ) = withRetry {
         httpClient.post("player") {
             ytClient(client, setLogin = true)
@@ -240,6 +241,9 @@ class InnerTube {
                                 signatureTimestamp
                             )
                         )
+                    } else null,
+                    serviceIntegrityDimensions = if (client.useWebPoTokens && poToken != null) {
+                        PlayerBody.ServiceIntegrityDimensions(poToken)
                     } else null,
                 )
             )
@@ -399,7 +403,7 @@ class InnerTube {
             setBody(
                 LikeBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.VideoTarget(videoId)
+                    target = LikeBody.Target.video(videoId)
                 )
             )
         }
@@ -414,7 +418,7 @@ class InnerTube {
             setBody(
                 LikeBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.VideoTarget(videoId)
+                    target = LikeBody.Target.video(videoId)
                 )
             )
         }
@@ -459,7 +463,7 @@ class InnerTube {
             setBody(
                 LikeBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.PlaylistTarget(playlistId)
+                    target = LikeBody.Target.playlist(playlistId)
                 )
             )
         }
@@ -474,7 +478,7 @@ class InnerTube {
             setBody(
                 LikeBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.PlaylistTarget(playlistId)
+                    target = LikeBody.Target.playlist(playlistId)
                 )
             )
         }

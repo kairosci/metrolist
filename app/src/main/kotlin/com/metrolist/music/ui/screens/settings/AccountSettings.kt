@@ -27,12 +27,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import timber.log.Timber
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +63,7 @@ import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.UseLoginForBrowse
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.constants.YtmSyncKey
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.InfoLabel
 import com.metrolist.music.ui.component.PreferenceEntry
 import com.metrolist.music.ui.component.SwitchPreference
@@ -97,6 +102,8 @@ fun AccountSettings(
 
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -169,7 +176,8 @@ fun AccountSettings(
             if (isLoggedIn) {
                 OutlinedButton(
                     onClick = {
-                        accountSettingsViewModel.logoutAndClearSyncedContent(context, onInnerTubeCookieChange)
+                        Timber.d("[LOGOUT] User clicked logout button, showing dialog")
+                        showLogoutDialog = true
                     },
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -179,6 +187,53 @@ fun AccountSettings(
                     Text(stringResource(R.string.action_logout))
                 }
             }
+        }
+
+        // Logout confirmation dialog
+        if (showLogoutDialog) {
+            DefaultDialog(
+                onDismiss = { showLogoutDialog = false },
+                title = { Text(stringResource(R.string.logout_dialog_title)) },
+                content = {
+                    Text(
+                        text = stringResource(R.string.logout_dialog_message),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(horizontal = 18.dp)
+                    )
+                },
+                buttons = {
+                    TextButton(
+                        onClick = {
+                            Timber.d("[LOGOUT_CLEAR] User chose to clear data")
+                            scope.launch {
+                                Timber.d("[LOGOUT_CLEAR] Starting clear and logout process")
+                                accountSettingsViewModel.clearAllLibraryData()
+                                Timber.d("[LOGOUT_CLEAR] Library data cleared, now logging out")
+                                accountSettingsViewModel.logoutKeepData(context, onInnerTubeCookieChange)
+                                Timber.d("[LOGOUT_CLEAR] Logout complete")
+                                showLogoutDialog = false
+                                onClose()
+                            }
+                        }
+                    ) {
+                        Text(stringResource(R.string.logout_clear))
+                    }
+                    TextButton(
+                        onClick = {
+                            Timber.d("[LOGOUT_KEEP] User chose to keep data")
+                            scope.launch {
+                                Timber.d("[LOGOUT_KEEP] Starting logout process (keeping data)")
+                                accountSettingsViewModel.logoutKeepData(context, onInnerTubeCookieChange)
+                                Timber.d("[LOGOUT_KEEP] Logout complete")
+                                showLogoutDialog = false
+                                onClose()
+                            }
+                        }
+                    ) {
+                        Text(stringResource(R.string.logout_keep))
+                    }
+                }
+            )
         }
 
         Spacer(Modifier.height(4.dp))
@@ -196,22 +251,48 @@ fun AccountSettings(
             TextFieldDialog(
                 initialTextFieldValue = TextFieldValue(text),
                 onDone = { data ->
+                    var cookie = ""
+                    var visitorDataValue = ""
+                    var dataSyncIdValue = ""
+                    var accountNameValue = ""
+                    var accountEmailValue = ""
+                    var accountChannelHandleValue = ""
+
                     data.split("\n").forEach {
                         when {
-                            it.startsWith("***INNERTUBE COOKIE*** =") -> onInnerTubeCookieChange(it.substringAfter("="))
-                            it.startsWith("***VISITOR DATA*** =") -> onVisitorDataChange(it.substringAfter("="))
-                            it.startsWith("***DATASYNC ID*** =") -> onDataSyncIdChange(it.substringAfter("="))
-                            it.startsWith("***ACCOUNT NAME*** =") -> onAccountNameChange(it.substringAfter("="))
-                            it.startsWith("***ACCOUNT EMAIL*** =") -> onAccountEmailChange(it.substringAfter("="))
-                            it.startsWith("***ACCOUNT CHANNEL HANDLE*** =") -> onAccountChannelHandleChange(it.substringAfter("="))
+                            it.startsWith("***INNERTUBE COOKIE*** =") -> cookie = it.substringAfter("=")
+                            it.startsWith("***VISITOR DATA*** =") -> visitorDataValue = it.substringAfter("=")
+                            it.startsWith("***DATASYNC ID*** =") -> dataSyncIdValue = it.substringAfter("=")
+                            it.startsWith("***ACCOUNT NAME*** =") -> accountNameValue = it.substringAfter("=")
+                            it.startsWith("***ACCOUNT EMAIL*** =") -> accountEmailValue = it.substringAfter("=")
+                            it.startsWith("***ACCOUNT CHANNEL HANDLE*** =") -> accountChannelHandleValue = it.substringAfter("=")
                         }
                     }
+                    // Write all credentials atomically to DataStore and wait for completion
+                    // before restarting, preventing the race condition where the process
+                    // would be killed before async DataStore coroutines finished writing.
+                    accountSettingsViewModel.saveTokenAndRestart(
+                        context = context,
+                        cookie = cookie,
+                        visitorData = visitorDataValue,
+                        dataSyncId = dataSyncIdValue,
+                        accountName = accountNameValue,
+                        accountEmail = accountEmailValue,
+                        accountChannelHandle = accountChannelHandleValue,
+                    )
                 },
                 onDismiss = { showTokenEditor = false },
                 singleLine = false,
                 maxLines = 20,
-                isInputValid = {
-                    it.isNotEmpty() && "SAPISID" in parseCookieString(it)
+                isInputValid = { fullText ->
+                    // Extract the cookie value from the formatted template line,
+                    // then validate it separately — avoids the bug where parseCookieString
+                    // received the entire multi-line template and failed to find "SAPISID"
+                    // as a key because the "***INNERTUBE COOKIE*** =" prefix shadowed it.
+                    val cookieLine = fullText.lines()
+                        .find { it.startsWith("***INNERTUBE COOKIE*** =") }
+                    val cookieValue = cookieLine?.substringAfter("***INNERTUBE COOKIE*** =")?.trim() ?: ""
+                    cookieValue.isNotEmpty() && "SAPISID" in parseCookieString(cookieValue)
                 },
                 extraContent = {
                     InfoLabel(text = stringResource(R.string.token_adv_login_description))
