@@ -663,3 +663,6 @@ val CountryCodeToName =
         "YE" to "Yemen",
         "ZW" to "Zimbabwe",
     )
+
+// Video playback preferences
+val EnableVideoPlaybackKey = booleanPreferencesKey("enableVideoPlayback")
