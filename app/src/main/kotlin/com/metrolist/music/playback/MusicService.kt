@@ -518,10 +518,22 @@ class MusicService :
             try {
                 val cachedIds = playerCache.keys.toList()
                 if (cachedIds.isNotEmpty()) {
-                    val chunkSize = 500
-                    for (i in cachedIds.indices step chunkSize) {
-                        val chunk = cachedIds.subList(i, minOf(i + chunkSize, cachedIds.size))
-                        database.updateCachedInfoMany(chunk)
+                    val fullyCachedIds = cachedIds.filter { mediaId ->
+                        val contentLength = playerCache.getContentMetadata(mediaId)
+                            .get(androidx.media3.datasource.cache.ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+                        if (contentLength > 0) {
+                            val cachedBytes = playerCache.getCachedSpans(mediaId).sumOf { it.length }
+                            cachedBytes >= contentLength * 0.99
+                        } else {
+                            false
+                        }
+                    }
+                    if (fullyCachedIds.isNotEmpty()) {
+                        val chunkSize = 500
+                        for (i in fullyCachedIds.indices step chunkSize) {
+                            val chunk = fullyCachedIds.subList(i, minOf(i + chunkSize, fullyCachedIds.size))
+                            database.updateCachedInfoMany(chunk)
+                        }
                     }
                 }
             } catch (e: Exception) {
