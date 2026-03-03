@@ -513,6 +513,22 @@ class MusicService :
         playerInitialized.value = true
         Timber.tag(TAG).d("Player successfully initialized")
 
+        // Sync initial cache state
+        scope.launch(Dispatchers.IO) {
+            try {
+                val cachedIds = playerCache.keys.toList()
+                if (cachedIds.isNotEmpty()) {
+                    val chunkSize = 500
+                    for (i in cachedIds.indices step chunkSize) {
+                        val chunk = cachedIds.subList(i, minOf(i + chunkSize, cachedIds.size))
+                        database.updateCachedInfoMany(chunk)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to sync initial cache state")
+            }
+        }
+
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         setupAudioFocusRequest()
 
