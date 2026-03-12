@@ -147,6 +147,7 @@ class PlayerConnection(
         )
 
     val mediaMetadata = MutableStateFlow(player.currentMetadata)
+    val currentMediaItem = MutableStateFlow(player.currentMediaItem)
     val currentSong =
         mediaMetadata.flatMapLatest {
             database.song(it?.id)
@@ -219,6 +220,7 @@ class PlayerConnection(
         playbackState.value = newPlayer.playbackState
         playWhenReady.value = newPlayer.playWhenReady
         mediaMetadata.value = newPlayer.currentMetadata
+        currentMediaItem.value = newPlayer.currentMediaItem
         queueTitle.value = service.queueTitle
         queueWindows.value = newPlayer.getQueueWindows()
         currentWindowIndex.value = newPlayer.getCurrentQueueIndex()
@@ -339,6 +341,23 @@ class PlayerConnection(
         }
     }
 
+    /**
+     * Toggles video track playback state in the ExoPlayer instance.
+     * When disabled, the video track is ignored during track selection.
+     */
+    fun toggleVideoPlayback() {
+        try {
+            val exoPlayer = getPlayerSafe()
+            val currentParameters = exoPlayer.trackSelectionParameters
+            val isVideoDisabled = currentParameters.disabledTrackTypes.contains(androidx.media3.common.C.TRACK_TYPE_VIDEO)
+            exoPlayer.trackSelectionParameters = currentParameters
+                .buildUpon()
+                .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, !isVideoDisabled)
+                .build()
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error toggling video playback")
+        }
+    }
     /**
      * Start playback - handles Cast when active
      */
@@ -592,6 +611,7 @@ class PlayerConnection(
         reason: Int,
     ) {
         mediaMetadata.value = mediaItem?.metadata
+        currentMediaItem.value = mediaItem
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()

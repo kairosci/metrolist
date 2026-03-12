@@ -150,7 +150,7 @@ class MusicDatabase(
         AutoMigration(from = 31, to = 32),
         AutoMigration(from = 32, to = 33),
         AutoMigration(from = 33, to = 34),
-        AutoMigration(from = 34, to = 35),
+        AutoMigration(from = 34, to = 35, spec = Migration34To35::class),
         AutoMigration(from = 35, to = 36, spec = Migration35To36::class),
     ],
 )
@@ -162,40 +162,40 @@ abstract class InternalDatabase : RoomDatabase() {
     companion object {
         const val DB_NAME = "song.db"
 
+        fun createBuilder(context: Context): RoomDatabase.Builder<InternalDatabase> =
+            Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
+                .addMigrations(
+                    MIGRATION_1_2,
+                    MIGRATION_21_24,
+                    MIGRATION_22_24,
+                    MIGRATION_24_25,
+                )
+                .fallbackToDestructiveMigration(dropAllTables = true)
+                .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
+                .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
+                .addCallback(object : RoomDatabase.Callback() {
+                    override fun onOpen(db: SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        try {
+                            db.query("PRAGMA busy_timeout = 60000").close()
+                            db.query("PRAGMA cache_size = -16000").close()
+                            db.query("PRAGMA wal_autocheckpoint = 1000").close()
+                            db.query("PRAGMA synchronous = NORMAL").close()
+                        } catch (e: Exception) {
+                            Timber.tag("MusicDatabase").e(e, "Failed to set PRAGMA settings")
+                        }
+                    }
+                })
+
         fun newInstance(context: Context): MusicDatabase =
             MusicDatabase(
-                delegate =
-                Room
-                    .databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                    .addMigrations(
-                        MIGRATION_1_2,
-                        MIGRATION_21_24,
-                        MIGRATION_22_24,
-                        MIGRATION_24_25,
-                    )
-                    .fallbackToDestructiveMigration(dropAllTables = true)
-                    .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                    .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
-                    .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
-                    .addCallback(object : RoomDatabase.Callback() {
-                        override fun onOpen(db: SupportSQLiteDatabase) {
-                            super.onOpen(db)
-                            try {
-                                db.query("PRAGMA busy_timeout = 60000").close()
-                                db.query("PRAGMA cache_size = -16000").close()
-                                db.query("PRAGMA wal_autocheckpoint = 1000").close()
-                                db.query("PRAGMA synchronous = NORMAL").close()
-                            } catch (e: Exception) {
-                                Timber.tag("MusicDatabase").e(e, "Failed to set PRAGMA settings")
-                            }
-                        }
-                    })
-                    .build(),
+                delegate = createBuilder(context).build()
             )
     }
 }
 
-// ===== Migrations =====
+//  Migrations
 
 val MIGRATION_1_2 =
     object : Migration(1, 2) {
@@ -471,7 +471,7 @@ val MIGRATION_22_24 =
         }
     }
 
-// ===== AutoMigration Specs =====
+//  AutoMigration Specs
 
 @DeleteColumn.Entries(
     DeleteColumn(tableName = "song", columnName = "isTrash"),
@@ -548,13 +548,13 @@ class Migration11To12 : AutoMigrationSpec {
                     table = "album",
                     conflictAlgorithm = SQLiteDatabase.CONFLICT_IGNORE,
                     values =
-                    contentValuesOf(
-                        "id" to albumId,
-                        "title" to albumName,
-                        "songCount" to 0,
-                        "duration" to 0,
-                        "lastUpdateTime" to 0,
-                    ),
+                        contentValuesOf(
+                            "id" to albumId,
+                            "title" to albumName,
+                            "songCount" to 0,
+                            "duration" to 0,
+                            "lastUpdateTime" to 0,
+                        ),
                 )
             }
         }
@@ -641,7 +641,7 @@ class Migration22To23 : AutoMigrationSpec {
     }
 }
 
-class Migration23To24: AutoMigrationSpec {
+class Migration23To24 : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
         var hasIsUploaded = false
         db.query("PRAGMA table_info('song')").use { cursor ->
@@ -734,6 +734,35 @@ class Migration35To36 : AutoMigrationSpec {
         }
         if (!hasIsCached) {
             db.execSQL("ALTER TABLE song ADD COLUMN isCached INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+}
+
+class Migration34To35 : AutoMigrationSpec {
+    override fun onPostMigrate(db: SupportSQLiteDatabase) {
+        // Add missing columns for video playback feature
+        var artworkUrlExists = false
+        var videoIdExists = false
+        var squareThumbExists = false
+        db.query("PRAGMA table_info('song')").use { cursor ->
+            val nameIndex = cursor.getColumnIndex("name")
+            if (nameIndex >= 0) {
+                while (cursor.moveToNext()) {
+                    val colName = cursor.getString(nameIndex)
+                    if (colName == "artworkUrl") artworkUrlExists = true
+                    if (colName == "videoId") videoIdExists = true
+                    if (colName == "squareThumbnailUrl") squareThumbExists = true
+                }
+            }
+        }
+        if (!artworkUrlExists) {
+            db.execSQL("ALTER TABLE `song` ADD COLUMN `artworkUrl` TEXT")
+        }
+        if (!videoIdExists) {
+            db.execSQL("ALTER TABLE `song` ADD COLUMN `videoId` TEXT")
+        }
+        if (!squareThumbExists) {
+            db.execSQL("ALTER TABLE `song` ADD COLUMN `squareThumbnailUrl` TEXT")
         }
     }
 }
