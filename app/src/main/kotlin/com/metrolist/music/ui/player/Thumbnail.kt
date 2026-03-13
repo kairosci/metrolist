@@ -5,8 +5,6 @@
 
 package com.metrolist.music.ui.player
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
@@ -229,8 +227,12 @@ fun Thumbnail(
 
     // Synchronize video toggle state with actual track selection
     LaunchedEffect(player) {
-        val currentParams = player.trackSelectionParameters
-        isVideoShown = !currentParams.disabledTrackTypes.contains(C.TRACK_TYPE_VIDEO)
+        try {
+            val currentParams = player.trackSelectionParameters
+            isVideoShown = !currentParams.disabledTrackTypes.contains(C.TRACK_TYPE_VIDEO)
+        } catch (e: Exception) {
+            isVideoShown = false
+        }
     }
     val error by playerConnection.error.collectAsState()
     val queueTitle by playerConnection.queueTitle.collectAsState()
@@ -747,17 +749,6 @@ private fun SongVideoToggle(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        val songBackground by animateDpAsState(
-            targetValue = if (!isVideoSelected) 0.dp else 4.dp,
-            animationSpec = tween(200),
-            label = "songBackground"
-        )
-        val videoBackground by animateDpAsState(
-            targetValue = if (isVideoSelected) 0.dp else 4.dp,
-            animationSpec = tween(200),
-            label = "videoBackground"
-        )
-
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))

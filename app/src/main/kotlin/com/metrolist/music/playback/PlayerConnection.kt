@@ -6,6 +6,7 @@
 package com.metrolist.music.playback
 
 import android.content.Context
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -349,10 +350,10 @@ class PlayerConnection(
         try {
             val exoPlayer = getPlayerSafe()
             val currentParameters = exoPlayer.trackSelectionParameters
-            val isVideoDisabled = currentParameters.disabledTrackTypes.contains(androidx.media3.common.C.TRACK_TYPE_VIDEO)
+            val isVideoDisabled = currentParameters.disabledTrackTypes.contains(C.TRACK_TYPE_VIDEO)
             exoPlayer.trackSelectionParameters = currentParameters
                 .buildUpon()
-                .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, !isVideoDisabled)
+                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !isVideoDisabled)
                 .build()
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error toggling video playback")

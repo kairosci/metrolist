@@ -801,11 +801,3 @@ val MIGRATION_34_35 =
             db.execSQL("CREATE VIEW `playlist_song_map_preview` AS SELECT * FROM playlist_song_map WHERE position <= 3 ORDER BY position")
         }
     }
-
-@Suppress("unused") // Kept for reference, replaced by manual MIGRATION_34_35
-class Migration34To35 : AutoMigrationSpec {
-    override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        // This class is no longer used, kept for schema compatibility
-        // All migration logic moved to MIGRATION_34_35
-    }
-}
