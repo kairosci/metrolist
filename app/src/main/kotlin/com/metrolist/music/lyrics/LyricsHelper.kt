@@ -25,8 +25,12 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
+
+private const val PROVIDER_TIMEOUT_MS = 15000L
+private const val MAX_LYRICS_FETCH_MS = 30000L
 
 class LyricsHelper
 @Inject
@@ -133,26 +137,32 @@ constructor(
                     try {
                         Timber.tag("LyricsHelper")
                             .d("Trying provider: ${provider.name} for $cleanedTitle")
-                        val result = provider.getLyrics(
-                            context,
-                            mediaMetadata.id,
-                            cleanedTitle,
-                            mediaMetadata.artists.joinToString { it.name },
-                            mediaMetadata.duration,
-                            mediaMetadata.album?.title,
-                        )
-                        result.onSuccess { lyrics ->
-                            Timber.tag("LyricsHelper").i("Successfully got lyrics from ${provider.name}")
-                            val filteredLyrics = LyricsUtils.filterLyricsCreditLines(lyrics)
-                            return@async LyricsWithProvider(filteredLyrics, provider.name)
-                        }.onFailure { e ->
-                            Timber.tag("LyricsHelper").w("${provider.name} failed: ${e.message}")
-                            reportException(e)
+                        val result = withTimeoutOrNull(PROVIDER_TIMEOUT_MS) {
+                            provider.getLyrics(
+                                context,
+                                mediaMetadata.id,
+                                cleanedTitle,
+                                mediaMetadata.artists.joinToString { it.name },
+                                mediaMetadata.duration,
+                                mediaMetadata.album?.title,
+                            )
+                        }
+                        when {
+                            result?.isSuccess == true -> {
+                                Timber.tag("LyricsHelper").i("Successfully got lyrics from ${provider.name}")
+                                val filteredLyrics = LyricsUtils.filterLyricsCreditLines(result.getOrNull()!!)
+                                return@async LyricsWithProvider(filteredLyrics, provider.name)
+                            }
+                            result == null -> {
+                                Timber.tag("LyricsHelper").w("${provider.name} timed out after ${PROVIDER_TIMEOUT_MS}ms")
+                            }
+                            else -> {
+                                Timber.tag("LyricsHelper").w("${provider.name} failed: ${result.exceptionOrNull()?.message}")
+                            }
                         }
                     } catch (e: Exception) {
                         // Catch network-related exceptions like UnresolvedAddressException
                         Timber.tag("LyricsHelper").w("${provider.name} threw exception: ${e.message}")
-                        reportException(e)
                     }
                 } else {
                     Timber.tag("LyricsHelper").d("Provider ${provider.name} is disabled")
@@ -162,7 +172,8 @@ constructor(
             return@async LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         }
 
-        val result = deferred.await()
+        val result = withTimeoutOrNull(MAX_LYRICS_FETCH_MS) { deferred.await() }
+            ?: LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         scope.cancel()
         return result
     }
