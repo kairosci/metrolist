@@ -1481,7 +1481,7 @@ class SyncUtils @Inject constructor(
 
                     val localSongsBeforeSync = database.playlistSongs(playlistId).first()
                     val downloadedSongIds = localSongsBeforeSync
-                        .filter { it.song.isDownloaded }
+                        .filter { it.song.isDownloaded || it.song.dateDownload != null }
                         .map { it.song.id }
                         .toSet()
 
