@@ -599,16 +599,15 @@ private fun OnlinePlaylistHeader(
                                      shuffleEndpointParams = playlist.shuffleEndpoint?.params,
                                      radioEndpointParams = playlist.radioEndpoint?.params,
                                  ).toggleLike()
-                             database.transaction {
+                             val songMetadata = songs.map { it.toMediaMetadata() }
+                             database.withTransaction {
                                  insert(playlistEntity)
-                             }
-                             val songIds = songs
-                                 .map { it.toMediaMetadata() }
-                                 .onEach { database.transaction { insert(it) } }
-                                 .map { it.id }
-                             val createdPlaylist = database.playlist(playlistEntity.id).first()
-                             if (createdPlaylist != null) {
-                                 database.addSongToPlaylistWithLibrarySync(createdPlaylist, songIds)
+                                 songMetadata.onEach { insert(it) }
+                                 val songIds = songMetadata.map { it.id to it.setVideoId }
+                                 val createdPlaylist = database.playlist(playlistEntity.id).first()
+                                 if (createdPlaylist != null) {
+                                     database.addSongToPlaylistWithLibrarySync(createdPlaylist, songIds)
+                                 }
                              }
                          }
                      }

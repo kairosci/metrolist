@@ -1510,10 +1510,10 @@ class SyncUtils @Inject constructor(
                                 }
                             }
                         }
-                    }
-                    val playlistEntity = database.playlist(playlistId).first()
-                    if (playlistEntity != null) {
-                        database.addSongToPlaylistWithLibrarySync(playlistEntity, songs.map { it.id })
+                        val playlistEntity = database.playlist(playlistId).first()
+                        if (playlistEntity != null) {
+                            database.addSongToPlaylistWithLibrarySync(playlistEntity, songs.map { it.id to it.setVideoId })
+                        }
                     }
                     Timber.d("syncPlaylist: Successfully synced playlist")
                 } catch (e: Exception) {

@@ -1363,7 +1363,7 @@ fun LocalPlaylistHeader(
                                         val songIds = playlistPage.songs
                                             .map(SongItem::toMediaMetadata)
                                             .onEach(::insert)
-                                            .map { it.id }
+                                            .map { it.id to it.setVideoId }
                                         addSongToPlaylistWithLibrarySync(playlist, songIds)
                                     }
                                 }

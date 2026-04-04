@@ -423,7 +423,7 @@ fun CommunityPlaylistCard(
                     )
                 }
 
-                IconButton(
+                 IconButton(
                     onClick = {
                         scope.launch(Dispatchers.IO) {
                             if (dbPlaylist?.playlist == null) {
@@ -441,10 +441,7 @@ fun CommunityPlaylistCard(
                                         shuffleEndpointParams = item.playlist.shuffleEndpoint?.params,
                                         radioEndpointParams = item.playlist.radioEndpoint?.params,
                                     ).toggleLike()
-                                database.transaction {
-                                    insert(playlistEntity)
-                                }
-                                val songIds = item.songs
+                                val songMetadata = item.songs
                                     .ifEmpty {
                                         YouTube
                                             .playlist(item.playlist.id)
@@ -453,11 +450,14 @@ fun CommunityPlaylistCard(
                                             ?.songs
                                             .orEmpty()
                                     }.map { it.toMediaMetadata() }
-                                    .onEach { database.transaction { insert(it) } }
-                                    .map { it.id }
-                                val createdPlaylist = database.playlist(playlistEntity.id).first()
-                                if (createdPlaylist != null) {
-                                    database.addSongToPlaylistWithLibrarySync(createdPlaylist, songIds)
+                                database.withTransaction {
+                                    insert(playlistEntity)
+                                    songMetadata.onEach { insert(it) }
+                                    val songIds = songMetadata.map { it.id to it.setVideoId }
+                                    val createdPlaylist = database.playlist(playlistEntity.id).first()
+                                    if (createdPlaylist != null) {
+                                        database.addSongToPlaylistWithLibrarySync(createdPlaylist, songIds)
+                                    }
                                 }
                             } else {
                                 database.transaction {

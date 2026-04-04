@@ -201,7 +201,7 @@ fun YouTubePlaylistMenu(
                                                 .orEmpty()
                                         }.map { it.toMediaMetadata() }
                                         .onEach { database.transaction { insert(it) } }
-                                        .map { it.id }
+                                        .map { it.id to it.setVideoId }
                                     database.addSongToPlaylistWithLibrarySync(playlistFull, songIds)
                                 }
                             }

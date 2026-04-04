@@ -1112,23 +1112,27 @@ interface DatabaseDao {
     
     // This prevents songs from being removed during automatic playlist synchronization
     @Transaction
-    fun addSongToPlaylistWithLibrarySync(playlist: Playlist, songIds: List<String>) {
+    fun addSongToPlaylistWithLibrarySync(
+        playlist: Playlist,
+        songs: List<Pair<String, String?>>  // Pair of (songId, setVideoId)
+    ) {
         val now = LocalDateTime.now()
         var position = playlist.songCount
 
-        songIds.forEach { id ->
+        songs.forEach { (id, setVideoId) ->
             val existingSong = getSongByIdBlocking(id)
             if (existingSong != null) {
                 // If song already exists, update it to mark as inLibrary if not already marked
                 if (existingSong.song.inLibrary == null) {
                     inLibrary(id, now)
                 }
-                // Add to playlist mapping
+                // Add to playlist mapping, preserving setVideoId for reordering operations
                 insert(
                     PlaylistSongMap(
                         songId = id,
                         playlistId = playlist.id,
-                        position = position++
+                        position = position++,
+                        setVideoId = setVideoId
                     )
                 )
             }
