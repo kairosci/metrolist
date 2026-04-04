@@ -2133,6 +2133,11 @@ class MusicService :
     ) {
         // Handle autoplay - skip to next song when playback ends
         if (playbackState == Player.STATE_ENDED) {
+            // Check sleep timer guard - don't autoplay/repeat if sleep timer will pause
+            if (sleepTimer.isActive && sleepTimer.pauseWhenSongEnd) {
+                return
+            }
+
             val repeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
             
             // Handle Repeat All mode
@@ -2143,9 +2148,9 @@ class MusicService :
                 return
             }
             
-            // Handle Repeat One mode
+            // Handle Repeat One mode - restart current song
             if (repeatMode == REPEAT_MODE_ONE) {
-                player.seekTo(0, 0)
+                player.seekTo(player.currentMediaItemIndex, 0)
                 player.prepare()
                 player.play()
                 return
