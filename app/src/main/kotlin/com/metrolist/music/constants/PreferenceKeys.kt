@@ -111,7 +111,6 @@ val AudioQualityKey = stringPreferencesKey("audioQuality")
 enum class AudioQuality {
     AUTO,
     HIGH,
-    LOW,
 }
 
 val AudioOffload = booleanPreferencesKey("enableOffload")
