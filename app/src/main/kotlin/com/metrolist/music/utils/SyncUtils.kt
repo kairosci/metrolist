@@ -1487,17 +1487,17 @@ class SyncUtils @Inject constructor(
 
                     database.withTransaction {
                         database.clearPlaylist(playlistId)
-                        songs.forEachIndexed { idx, song ->
-                            if (database.song(song.id).firstOrNull() == null) {
+                        songs.forEach { song ->
+                            if (database.getSongByIdBlocking(song.id) == null) {
                                 database.insert(song)
                             }
                         }
 
                         downloadedSongIds.forEach { songId ->
                             if (songId !in remoteIds) {
-                                val existingSong = database.song(songId).firstOrNull()
+                                val existingSong = database.getSongByIdBlocking(songId)
                                 if (existingSong != null) {
-                                    val maxPosition = database.playlistSongs(playlistId).first()
+                                    val maxPosition = database.playlistSongsBlocking(playlistId)
                                         .maxOfOrNull { it.map.position } ?: -1
                                     database.insert(
                                         PlaylistSongMap(
@@ -1510,9 +1510,13 @@ class SyncUtils @Inject constructor(
                                 }
                             }
                         }
-                        val playlistEntity = database.playlist(playlistId).first()
+
+                        val playlistEntity = database.playlistBlocking(playlistId)
                         if (playlistEntity != null) {
-                            database.addSongToPlaylistWithLibrarySync(playlistEntity, songs.map { it.id to it.setVideoId })
+                            database.addSongToPlaylistWithLibrarySync(
+                                playlistEntity,
+                                songs.map { it.id to it.setVideoId }
+                            )
                         }
                     }
                     Timber.d("syncPlaylist: Successfully synced playlist")

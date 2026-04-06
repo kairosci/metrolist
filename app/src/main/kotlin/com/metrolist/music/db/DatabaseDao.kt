@@ -1163,6 +1163,16 @@ interface DatabaseDao {
     }.map { it.reversed(descending) }
 
     @Transaction
+    @Query("SELECT * FROM playlist_song_map WHERE playlistId = :playlistId ORDER BY position")
+    fun playlistSongsBlocking(playlistId: String): List<PlaylistSong>
+
+    @Transaction
+    @Query(
+        "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) " +
+                "AS songCount FROM playlist WHERE id = :playlistId"
+    )
+    fun playlistBlocking(playlistId: String): Playlist?
+    @Transaction
     @Query("SELECT * FROM song WHERE isDownloaded = 1 AND (isEpisode = 0 OR isEpisode IS NULL) ORDER BY dateDownload")
     fun downloadedSongsByCreateDateAsc(): Flow<List<Song>>
 

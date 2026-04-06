@@ -302,6 +302,8 @@ fun AddToPlaylistDialog(
                         coroutineScope.launch(Dispatchers.IO) {
                             if (songIds == null) {
                                 songIds = onGetSong(playlist)
+                            } else {
+                                onGetSong(playlist)
                             }
                             duplicates = database.playlistDuplicates(playlist.id, songIds!!)
                             if (duplicates.isNotEmpty()) {
