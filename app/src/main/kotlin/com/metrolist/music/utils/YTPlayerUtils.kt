@@ -422,18 +422,32 @@ object YTPlayerUtils {
     ): PlayerResponse.StreamingData.Format? {
         Timber.tag(logTag).d("Finding format with audioQuality: $audioQuality, network metered: ${connectivityManager.isActiveNetworkMetered}")
 
-        val candidates = playerResponse.streamingData?.adaptiveFormats
-            ?.filter { it.isAudio && it.isOriginal }
+        val adaptiveFormats = playerResponse.streamingData?.adaptiveFormats ?: return null
 
-        val format = when (audioQuality) {
-            AudioQuality.VERY_HIGH -> candidates?.maxByOrNull { it.bitrate }
-            else -> candidates?.maxByOrNull {
-                it.bitrate * when (audioQuality) {
-                    AudioQuality.AUTO -> if (connectivityManager.isActiveNetworkMetered) -1 else 1
-                    AudioQuality.HIGH -> 1
-                    AudioQuality.LOW -> -1
-                } + (if (it.mimeType.startsWith("audio/webm")) 10240 else 0) // prefer opus stream
+        val maxBitrate = adaptiveFormats.maxOfOrNull { it.bitrate } ?: return null
+
+        val targetBitrate = when (audioQuality) {
+            AudioQuality.VERY_HIGH -> maxBitrate.toDouble()
+            AudioQuality.HIGH -> (maxBitrate * 0.67).coerceAtLeast(128000.0)
+            AudioQuality.LOW -> (maxBitrate * 0.33).coerceAtLeast(64000.0)
+            AudioQuality.AUTO -> {
+                if (connectivityManager.isActiveNetworkMetered) {
+                    (maxBitrate * 0.33).coerceAtLeast(64000.0)
+                } else {
+                    maxBitrate.toDouble()
+                }
             }
+        }
+
+        Timber.tag(logTag).d("Finding format: maxBitrate=$maxBitrate, targetBitrate=$targetBitrate")
+
+        val format = if (audioQuality == AudioQuality.VERY_HIGH) {
+            adaptiveFormats.maxByOrNull { it.bitrate }
+        } else {
+            adaptiveFormats
+                .filter { it.isAudio && it.isOriginal }
+                .minByOrNull { kotlin.math.abs(it.bitrate - targetBitrate) }
+                ?: adaptiveFormats.maxByOrNull { it.bitrate }
         }
 
         if (format != null) {
