@@ -446,7 +446,7 @@ object YTPlayerUtils {
 
         val format = audioCapableFormats
             .filter { it.bitrate >= targetBitrate && it.isOriginal }
-            .minByOrNull { it.bitrate }
+            .maxByOrNull { it.bitrate }
             ?: audioCapableFormats.maxByOrNull { it.bitrate }
 
         if (format != null) {
