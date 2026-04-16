@@ -1,5 +1,7 @@
 import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.Copy
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.net.URL
 import java.util.Properties
 
 val localProperties = Properties()
@@ -188,6 +190,8 @@ android {
     }
 }
 
+val protocVersion = libs.versions.protobuf.get()
+
 val generateProto by tasks.registering(Exec::class) {
     group = "build"
     description = "Generate Kotlin protobuf files"
@@ -204,7 +208,19 @@ val generateProto by tasks.registering(Exec::class) {
 
     outDir.mkdirs()
 
-    executable = "protoc"
+    val protocUrl = "https://repo1.maven.org/maven2/com/google/protobuf/protoc/$protocVersion/protoc-$protocVersion-linux-x86_64.exe"
+    val protocFile = file("${layout.buildDirectory.get().asFile}/protoc-$protocVersion")
+
+    doFirst {
+        logger.lifecycle("Downloading protoc $protocVersion")
+        protocFile.parentFile.mkdirs()
+        if (!protocFile.exists() || protocFile.length() == 0L) {
+            protocFile.writeBytes(URL(protocUrl).readBytes())
+            protocFile.setExecutable(true)
+        }
+    }
+
+    executable = protocFile.absolutePath
     args(
         "--java_out=lite:$outDir",
         "--kotlin_out=$outDir",
