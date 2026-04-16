@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.Exec
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -184,6 +185,45 @@ android {
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/io.netty.versions.properties"
         }
+    }
+}
+
+val generateProto by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Generate Kotlin protobuf files"
+
+    val protoDir = rootProject.file("metroproto")
+    val outDir = file("src/main/java")
+    val protoFile = protoDir.resolve("listentogether.proto")
+
+    if (!protoFile.exists()) {
+        logger.warn("Proto file not found at $protoFile. Skipping protobuf generation.")
+        enabled = false
+        return@registering
+    }
+
+    outDir.mkdirs()
+
+    executable = "protoc"
+    args(
+        "--java_out=lite:$outDir",
+        "--kotlin_out=$outDir",
+        "-I=$protoDir",
+        protoFile
+    )
+
+    doFirst {
+        logger.lifecycle("Generating protobuf files in $outDir")
+    }
+
+    doLast {
+        logger.lifecycle("Protobuf files generated successfully")
+    }
+}
+
+tasks.configureEach {
+    if (name.startsWith("compile") || name.startsWith("assemble")) {
+        dependsOn(generateProto)
     }
 }
 
