@@ -224,6 +224,9 @@ val generateProto by tasks.registering(Exec::class) {
     if (!protoFile.exists()) {
         logger.warn("Proto file not found at $protoFile. Skipping protobuf generation.")
         enabled = false
+        doLast {
+            logger.warn("Skipping protobuf generation - no proto file found")
+        }
         return@registering
     }
 
