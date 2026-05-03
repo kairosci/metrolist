@@ -32,7 +32,7 @@ fun List<Run>.splitArtistsByConjunction(): List<Run> {
     val result = mutableListOf<Run>()
     forEach { run ->
         val text = run.text
-        val conjunctionPattern = Regex(" & |, | \\band\\b| \\be\\b| \\by\\b| \\bet\\b| \\und\\b| \\bи\\b| \\bと\\b| \\b와\\b")
+        val conjunctionPattern = Regex(" & |, | \\band\\b")
         if (text.contains(conjunctionPattern)) {
             val parts = text.split(conjunctionPattern)
             parts.forEachIndexed { index, part ->
