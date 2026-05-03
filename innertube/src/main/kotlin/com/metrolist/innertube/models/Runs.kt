@@ -28,18 +28,13 @@ fun List<Run>.splitBySeparator(): List<List<Run>> {
     return res
 }
 
-/**
- * Splits artist runs by conjunction separators (&, ,) to properly handle
- * cases where multiple artists are displayed as "Artist1 & Artist2" or "Artist1, Artist2"
- */
 fun List<Run>.splitArtistsByConjunction(): List<Run> {
     val result = mutableListOf<Run>()
     forEach { run ->
         val text = run.text
-        // Check if this run contains conjunction patterns
-        if (text.contains(" & ") || text.contains(", ")) {
-            // Split by both patterns and preserve navigationEndpoint if present
-            val parts = text.split(Regex(" & |, "))
+        val conjunctionPattern = Regex(" & |, | \\band\\b| \\be\\b| \\by\\b| \\bet\\b| \\und\\b| \\bи\\b| \\bと\\b| \\b와\\b")
+        if (text.contains(conjunctionPattern)) {
+            val parts = text.split(conjunctionPattern)
             parts.forEachIndexed { index, part ->
                 if (part.isNotBlank()) {
                     result.add(Run(part.trim(), if (index == 0) run.navigationEndpoint else null))
