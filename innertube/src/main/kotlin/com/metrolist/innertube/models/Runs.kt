@@ -30,8 +30,11 @@ fun List<Run>.splitBySeparator(): List<List<Run>> {
 
 fun List<Run>.splitArtistsByConjunction(): List<Run> {
     val result = mutableListOf<Run>()
-    val pattern = ArtistConjunctions.conjunctions.joinToString("|") { Regex.escape(it) }
-    val conjunctionPattern = Regex(" $pattern |, | & ")
+    val words = ArtistConjunctions.conjunctions
+    val conjunctionPattern = Regex(
+        if (words.isNotEmpty()) " (${words.joinToString("|") { Regex.escape(it) }}) |, | & "
+        else ", | & "
+    )
     forEach { run ->
         val text = run.text
         if (text.contains(conjunctionPattern)) {
