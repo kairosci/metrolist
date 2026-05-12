@@ -97,16 +97,6 @@ class App :
 
         ArtistConjunctions.conjunctions = listOf(
             R.string.and,
-            R.string.e,
-            R.string.ed,
-            R.string.y,
-            R.string.et,
-            R.string.und,
-            R.string.en,
-            R.string.och,
-            R.string.og,
-            R.string.ja,
-            R.string.ve,
         ).mapNotNull { id ->
             runCatching { getString(id) }.getOrNull()
         }

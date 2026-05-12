@@ -3232,8 +3232,12 @@ object YouTube {
         val resolved = mutableMapOf<String, String>()
         for (name in missingNames) {
             val searchResult = search(name, SearchFilter.FILTER_ARTIST).getOrNull()
-            val artistId = searchResult?.items?.firstOrNull { it is ArtistItem }
-                ?.let { (it as ArtistItem).id }
+            val normalizedName = name.trim()
+            val artistId = searchResult?.items
+                ?.filterIsInstance<ArtistItem>()
+                ?.firstOrNull { candidate ->
+                    candidate.title.trim().equals(normalizedName, ignoreCase = true)
+                }?.id
             if (artistId != null) resolved[name] = artistId
         }
 

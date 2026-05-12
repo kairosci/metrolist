@@ -19,7 +19,6 @@ data class ArtistItemsPage(
 ) {
     companion object {
         fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): SongItem? {
-            // Split the secondary line by bullet separator to separate artists from other metadata (like views)
             val artistRuns = renderer.flexColumns
                 .getOrNull(1)
                 ?.musicResponsiveListItemFlexColumnRenderer
@@ -92,9 +91,7 @@ data class ArtistItemsPage(
                 // Video
                 renderer.isSong -> {
                     val subtitleRuns = renderer.subtitle?.runs ?: return null
-                    // Split any runs that contain conjunctions (&, ,) to properly extract individual artists
                     val expandedRuns = subtitleRuns.splitArtistsByConjunction()
-                    // Filter out separator runs (like "&", ",") to get only artist runs
                     val artistRuns = expandedRuns.filter { 
                         it.text.isNotBlank() && it.text != "&" && it.text != "," 
                     }
@@ -110,9 +107,7 @@ data class ArtistItemsPage(
                                 id = it.navigationEndpoint?.browseEndpoint?.browseId
                             )
                         }.ifEmpty {
-                            artistRuns.firstOrNull()?.let { 
-                                listOf(Artist(name = it.text.trim(), id = null)) 
-                            } ?: emptyList()
+                            artistRuns.map { Artist(name = it.text.trim(), id = null) }
                         },
                         album = null,
                         duration = null,
