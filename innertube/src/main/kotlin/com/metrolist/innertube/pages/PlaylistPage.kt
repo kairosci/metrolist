@@ -5,6 +5,7 @@ import com.metrolist.innertube.models.MusicResponsiveListItemRenderer
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.utils.parseTime
+import timber.log.Timber
 
 data class PlaylistPage(
     val playlist: PlaylistItem,
@@ -12,7 +13,7 @@ data class PlaylistPage(
     val songsContinuation: String?,
     val continuation: String?,
 ) {
-    companion object {
+     companion object {
          fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): SongItem? {
              val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
@@ -21,13 +22,21 @@ data class PlaylistPage(
                  ?.musicResponsiveListItemFlexColumnRenderer
                  ?.text
                  ?.runs
+             
+             val title = renderer.flexColumns.firstOrNull()
+                 ?.musicResponsiveListItemFlexColumnRenderer?.text
+                 ?.runs?.firstOrNull()?.text ?: return null
+             
+             if (secondaryLineRuns == null) {
+                 Timber.w("PlaylistPage.fromMusicResponsiveListItemRenderer: Song '$title' - NO SECONDARY LINE (flexColumns[1] is null)")
+             }
+             
+             val artists = PageHelper.extractArtists(secondaryLineRuns)
 
              return SongItem(
                  id = renderer.playlistItemData?.videoId ?: return null,
-                 title = renderer.flexColumns.firstOrNull()
-                     ?.musicResponsiveListItemFlexColumnRenderer?.text
-                     ?.runs?.firstOrNull()?.text ?: return null,
-                 artists = PageHelper.extractArtists(secondaryLineRuns),
+                 title = title,
+                 artists = artists,
                 duration = renderer.fixedColumns?.firstOrNull()?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.text?.parseTime(),
                 musicVideoType = renderer.musicVideoType,
                 thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,

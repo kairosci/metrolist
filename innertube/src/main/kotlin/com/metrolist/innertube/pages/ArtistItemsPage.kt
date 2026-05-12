@@ -11,6 +11,7 @@ import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.oddElements
 import com.metrolist.innertube.models.splitBySeparator
 import com.metrolist.innertube.utils.parseTime
+import timber.log.Timber
 
 data class ArtistItemsPage(
     val title: String,
@@ -89,16 +90,26 @@ data class ArtistItemsPage(
                     } != null
                 )
                 // Video
-                renderer.isSong -> SongItem(
-                    id = renderer.navigationEndpoint.watchEndpoint?.videoId ?: return null,
-                    title = renderer.title.runs?.firstOrNull()?.text ?: return null,
-                    artists = PageHelper.extractArtists(renderer.subtitle?.runs),
-                    album = null,
-                    duration = null,
-                    musicVideoType = renderer.musicVideoType,
-                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
-                    endpoint = renderer.navigationEndpoint.watchEndpoint
-                )
+                renderer.isSong -> {
+                    val title = renderer.title.runs?.firstOrNull()?.text ?: return null
+                    val videoId = renderer.navigationEndpoint.watchEndpoint?.videoId ?: return null
+                    val artists = PageHelper.extractArtists(renderer.subtitle?.runs)
+                    
+                    if (artists.isEmpty() && renderer.subtitle?.runs != null) {
+                        Timber.w("ArtistItemsPage.fromMusicTwoRowItemRenderer: Song '$title' (id=$videoId) - SUBTITLE RUNS EXIST but extractArtists returned EMPTY")
+                    }
+                    
+                    SongItem(
+                        id = videoId,
+                        title = title,
+                        artists = artists,
+                        album = null,
+                        duration = null,
+                        musicVideoType = renderer.musicVideoType,
+                        thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        endpoint = renderer.navigationEndpoint.watchEndpoint
+                    )
+                }
                 renderer.isPlaylist -> PlaylistItem(
                     id = renderer.navigationEndpoint.browseEndpoint?.browseId?.removePrefix("VL") ?: return null,
                     title = renderer.title.runs?.firstOrNull()?.text ?: return null,
