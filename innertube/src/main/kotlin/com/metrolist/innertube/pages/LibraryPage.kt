@@ -8,6 +8,7 @@ import com.metrolist.innertube.models.MusicResponsiveListItemRenderer
 import com.metrolist.innertube.models.MusicTwoRowItemRenderer
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.PodcastItem
+import com.metrolist.innertube.InternalLogger
 import com.metrolist.innertube.models.Run
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
@@ -192,7 +193,7 @@ data class LibraryPage(
                             ?.content?.confirmDialogRenderer?.confirmButton?.buttonRenderer
                             ?.command?.musicDeletePrivatelyOwnedEntityCommand?.entityId
                     }
-                    timber.log.Timber.d("Parsed uploaded song: id=$videoId, entityId=$uploadEntityId")
+                    InternalLogger.d("Parsed uploaded song: id=$videoId, entityId=$uploadEntityId")
 
                     SongItem(
                         id = videoId,

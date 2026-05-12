@@ -4,7 +4,9 @@ pluginManagement {
     repositories {
         google()
         mavenCentral()
-        gradlePluginPortal()
+        maven { setUrl("https://jitpack.io") }
+        maven { setUrl("https://maven.aliyun.com/repository/public") }
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
 
@@ -34,6 +36,8 @@ include(":lastfm")
 include(":betterlyrics")
 include(":shazamkit")
 include(":paxsenix")
+include(":desktop")
+include(":connectivity")
 
 // Use a local copy of NewPipe Extractor by uncommenting the lines below.
 // We assume, that Metrolist and NewPipe Extractor have the same parent directory.

@@ -27,7 +27,7 @@ import java.io.IOException
 import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.io.encoding.Base64
-import timber.log.Timber
+import com.metrolist.innertube.InternalLogger
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**

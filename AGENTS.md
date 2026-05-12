@@ -16,6 +16,7 @@ Metrolist is a 3rd party YouTube Music client written in Kotlin. It follows mate
 5. Commit names should be clear and follow the format: `type(scope): short description`. For example: `feat(ui): add dark mode support`. Including the scope is optional.
 6. All string edits should be made to the `Metrolist/app/src/main/res/values/metrolist_strings.xml` file, NOT `Metrolist/app/src/main/res/values/strings.xml`. Do not touch other `strings.xml` or `metrolist_strings.xml` files in the project.
 7. You are to follow best practices for Kotlin and Android development.
+8. Metrolist is now a **multiplatform** project: there is both a mobile app (`:app`) and a **desktop app** (`:desktop`). Every feature present in the mobile app MUST also be present in the desktop app. The only differences should be platform-specific UI/UX adaptations (e.g., navigation rail instead of bottom nav, window management, menu bar, keyboard shortcuts). Features cannot be exclusive to mobile unless they are physically impossible on desktop (e.g., GPS, NFC, camera).
 
 ## AI-only guidelines
 
@@ -33,11 +34,15 @@ Metrolist is a 3rd party YouTube Music client written in Kotlin. It follows mate
 
 ## Building and testing your changes
 
-1. After making changes to the code, you should build the app to ensure that there are no compilation errors. Use the following command from the root directory of the project:
+1. After making changes to the code, you should build both the mobile and desktop apps to ensure that there are no compilation errors. Use the following commands from the root directory of the project:
 
 ```bash
+# Build mobile app
 ./gradlew :app:assembleFossDebug
+
+# Build desktop app
+./gradlew :desktop:compileKotlin
 ```
 
 2. If the build is not successful, review the error messages, fix the issues in your code, and try building again.
-3. Once the build is successful, you can test your changes on an emulator or a physical device. Install the generated APK located at `app/build/outputs/apk/universalFoss/debug/app-universal-foss-debug.apk` and ask a human for help testing the specific features you worked on.
+3. Once the build is successful, you can test your changes on an emulator or a physical device. Install the generated APK located at `app/build/outputs/apk/universalFoss/debug/app-universal-foss-debug.apk` and ask a human for help testing the specific features you worked on. For the desktop app, run `./gradlew :desktop:run` to test.
