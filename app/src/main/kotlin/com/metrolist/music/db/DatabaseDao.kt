@@ -1625,7 +1625,7 @@ interface DatabaseDao {
                 ArtistEntity(
                     id = artistId,
                     name = artist.name,
-                    channelId = artist.id,
+                    channelId = null,
                 )
             )
 

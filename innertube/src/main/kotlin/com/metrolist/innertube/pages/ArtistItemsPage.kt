@@ -92,12 +92,7 @@ data class ArtistItemsPage(
                 renderer.isSong -> SongItem(
                     id = renderer.navigationEndpoint.watchEndpoint?.videoId ?: return null,
                     title = renderer.title.runs?.firstOrNull()?.text ?: return null,
-                    artists = renderer.subtitle?.runs?.splitBySeparator()?.firstOrNull()?.oddElements()?.map {
-                        Artist(
-                            name = it.text,
-                            id = it.navigationEndpoint?.browseEndpoint?.browseId
-                        )
-                    } ?: return null,
+                    artists = PageHelper.extractArtists(renderer.subtitle?.runs),
                     album = null,
                     duration = null,
                     musicVideoType = renderer.musicVideoType,

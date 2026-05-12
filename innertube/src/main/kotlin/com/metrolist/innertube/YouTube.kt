@@ -1953,15 +1953,7 @@ object YouTube {
                     val titleRun = firstColumn.runs?.firstOrNull() ?: return null
                     val title = titleRun.text.takeIf { it.isNotBlank() } ?: return null
 
-                    val artists =
-                        secondColumn.runs?.mapNotNull { run ->
-                            run.text.takeIf { it.isNotBlank() }?.let { name ->
-                                Artist(
-                                    name = name,
-                                    id = run.navigationEndpoint?.browseEndpoint?.browseId,
-                                )
-                            }
-                        } ?: emptyList()
+                    val artists = PageHelper.extractArtists(secondColumn.runs)
 
                     val thirdColumn =
                         renderer.flexColumns
@@ -2010,12 +2002,7 @@ object YouTube {
                             renderer.title.runs
                                 ?.firstOrNull()
                                 ?.text ?: return null,
-                        artists =
-                            subtitle.mapNotNull {
-                                it.navigationEndpoint?.browseEndpoint?.browseId?.let { id ->
-                                    Artist(name = it.text, id = id)
-                                }
-                            },
+                        artists = PageHelper.extractArtists(subtitle),
                         thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
                         musicVideoType = renderer.musicVideoType,
                         explicit =
