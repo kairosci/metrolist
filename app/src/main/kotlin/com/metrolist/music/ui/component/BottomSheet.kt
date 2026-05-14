@@ -155,6 +155,9 @@ class BottomSheetState(
     private val animatable: Animatable<Dp, AnimationVector1D>,
     private val onAnchorChanged: (Int) -> Unit,
     val collapsedBound: Dp,
+    private val launchAnimation: (suspend () -> Unit) -> Unit = { block ->
+        coroutineScope.launch { block() }
+    },
 ) : DraggableState by draggableState {
     val dismissedBound: Dp
         get() = animatable.lowerBound!!
@@ -182,14 +185,14 @@ class BottomSheetState(
 
     fun collapse(animationSpec: AnimationSpec<Dp>) {
         onAnchorChanged(collapsedAnchor)
-        coroutineScope.launch {
+        launchAnimation {
             animatable.animateTo(collapsedBound, animationSpec)
         }
     }
 
     fun expand(animationSpec: AnimationSpec<Dp>) {
         onAnchorChanged(expandedAnchor)
-        coroutineScope.launch {
+        launchAnimation {
             animatable.animateTo(animatable.upperBound!!, animationSpec)
         }
     }
@@ -212,7 +215,7 @@ class BottomSheetState(
 
     fun dismiss() {
         onAnchorChanged(dismissedAnchor)
-        coroutineScope.launch {
+        launchAnimation {
             animatable.animateTo(animatable.lowerBound!!)
         }
     }
@@ -330,11 +333,27 @@ fun rememberBottomSheetState(
     var previousAnchor by rememberSaveable {
         mutableIntStateOf(initialAnchor)
     }
+
+    val activeAnimations = remember {
+        mutableIntStateOf(0)
+    }
+
     val animatable = remember {
         Animatable(0.dp, Dp.VectorConverter)
     }
 
-    return remember(dismissedBound, expandedBound, collapsedBound, coroutineScope) {
+    val launchAnimation: (suspend () -> Unit) -> Unit = { block ->
+        coroutineScope.launch {
+            activeAnimations.intValue++
+            try {
+                block()
+            } finally {
+                activeAnimations.intValue--
+            }
+        }
+    }
+
+    fun animateToAnchor() {
         val initialValue = when (previousAnchor) {
             expandedAnchor -> expandedBound
             collapsedAnchor -> collapsedBound
@@ -342,9 +361,16 @@ fun rememberBottomSheetState(
             else -> error("Unknown BottomSheet anchor")
         }
 
-        animatable.updateBounds(dismissedBound.coerceAtMost(expandedBound), expandedBound)
-        coroutineScope.launch {
+        launchAnimation {
             animatable.animateTo(initialValue, NavigationBarAnimationSpec)
+        }
+    }
+
+    return remember(dismissedBound, expandedBound, collapsedBound, coroutineScope) {
+        animatable.updateBounds(dismissedBound.coerceAtMost(expandedBound), expandedBound)
+
+        if (activeAnimations.intValue == 0) {
+            animateToAnchor()
         }
 
         BottomSheetState(
@@ -356,7 +382,8 @@ fun rememberBottomSheetState(
             onAnchorChanged = { previousAnchor = it },
             coroutineScope = coroutineScope,
             animatable = animatable,
-            collapsedBound = collapsedBound
+            collapsedBound = collapsedBound,
+            launchAnimation = launchAnimation,
         )
     }
 }
