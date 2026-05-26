@@ -5,7 +5,6 @@
 
 package com.metrolist.music.ui.screens
 
-import com.metrolist.music.utils.ARTIST_SEPARATOR
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -369,7 +368,7 @@ fun CommunityPlaylistCard(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = song.artists.joinToString(ARTIST_SEPARATOR) { it.name },
+                                text = song.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                 maxLines = 1,
@@ -585,7 +584,7 @@ fun DailyDiscoverCard(
                         Text(
                             text =
                                 buildString {
-                                    append((dailyDiscover.recommendation as? SongItem)?.artists?.joinToString(ARTIST_SEPARATOR) { it.name } ?: "")
+                                    append((dailyDiscover.recommendation as? SongItem)?.artists?.joinToString(" ${stringResource(R.string.and)} ") { it.name } ?: "")
                                     if (playCount > 0) {
                                         append(" • $playCount $playsString")
                                     }
@@ -612,7 +611,7 @@ fun DailyDiscoverCard(
                         text =
                             stringResource(
                                 messageRes,
-                                "${dailyDiscover.seed.title} • ${dailyDiscover.seed.artists.joinToString(ARTIST_SEPARATOR) { it.name }}",
+                                "${dailyDiscover.seed.title} • ${dailyDiscover.seed.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name }}",
                             ),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,

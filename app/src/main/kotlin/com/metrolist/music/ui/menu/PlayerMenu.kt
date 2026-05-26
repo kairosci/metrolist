@@ -146,6 +146,8 @@ fun PlayerMenu(
 
     val isPinned by database.speedDialDao.isPinned(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = false)
 
+    val separator = " ${stringResource(R.string.and)} "
+
     val artists =
         remember(mediaMetadata.artists) {
             mediaMetadata.artists.filter { it.id != null }
@@ -526,8 +528,8 @@ fun PlayerMenu(
                                     coroutineScope.launch(Dispatchers.IO) {
                                         if (isPinned) {
                                             database.speedDialDao.delete(mediaMetadata.id)
-                                        } else {
-                                            database.speedDialDao.insert(SpeedDialItem.fromYTItem(mediaMetadata.toYTItem()))
+                                         } else {
+                                            database.speedDialDao.insert(SpeedDialItem.fromYTItem(mediaMetadata.toYTItem(), separator))
                                         }
                                     }
                                     onDismiss()

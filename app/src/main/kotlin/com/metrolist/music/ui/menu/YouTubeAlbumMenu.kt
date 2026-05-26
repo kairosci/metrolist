@@ -98,6 +98,7 @@ fun YouTubeAlbumMenu(
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
     val album by database.albumWithSongs(albumItem.id).collectAsStateWithLifecycle(initialValue = null)
     val isPinned by database.speedDialDao.isPinned(albumItem.id).collectAsStateWithLifecycle(initialValue = false)
+    val separator = " ${stringResource(R.string.and)} "
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -427,7 +428,7 @@ fun YouTubeAlbumMenu(
                                     if (isPinned) {
                                         database.speedDialDao.delete(albumItem.id)
                                     } else {
-                                        database.speedDialDao.insert(SpeedDialItem.fromYTItem(albumItem))
+                                        database.speedDialDao.insert(SpeedDialItem.fromYTItem(albumItem, separator))
                                     }
                                 }
                                 onDismiss()

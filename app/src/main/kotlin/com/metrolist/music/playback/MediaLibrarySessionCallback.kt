@@ -5,7 +5,7 @@
 
 package com.metrolist.music.playback
 
-import com.metrolist.music.utils.ARTIST_SEPARATOR
+import com.metrolist.music.utils.getArtistSeparator
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
@@ -423,8 +423,8 @@ constructor(
                                             .setMediaMetadata(
                                                 MediaMetadata.Builder()
                                                     .setTitle(songItem.title)
-                                                    .setSubtitle(songItem.artists.joinToString(ARTIST_SEPARATOR) { it.name })
-                                                    .setArtist(songItem.artists.joinToString(ARTIST_SEPARATOR) { it.name })
+                                                    .setSubtitle(songItem.artists.joinToString(getArtistSeparator(context)) { it.name })
+                                                    .setArtist(songItem.artists.joinToString(getArtistSeparator(context)) { it.name })
                                                     .setArtworkUri(songItem.thumbnail.toUri())
                                                     .setIsPlayable(true)
                                                     .setIsBrowsable(false)
@@ -552,8 +552,8 @@ constructor(
                                 .setMediaMetadata(
                                     MediaMetadata.Builder()
                                         .setTitle(songItem.title)
-                                        .setSubtitle(songItem.artists.joinToString(ARTIST_SEPARATOR) { it.name })
-                                        .setArtist(songItem.artists.joinToString(ARTIST_SEPARATOR) { it.name })
+                                        .setSubtitle(songItem.artists.joinToString(getArtistSeparator(context)) { it.name })
+                                        .setArtist(songItem.artists.joinToString(getArtistSeparator(context)) { it.name })
                                         .setArtworkUri(songItem.thumbnail.toUri())
                                         .setIsPlayable(true)
                                         .setIsBrowsable(true)

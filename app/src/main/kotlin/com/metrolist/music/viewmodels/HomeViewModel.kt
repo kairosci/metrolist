@@ -64,6 +64,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.inject.Inject
 import kotlin.random.Random
+import com.metrolist.music.utils.getArtistSeparator
 
 data class DailyDiscoverItem(
     val seed: Song,
@@ -121,7 +122,7 @@ class HomeViewModel @Inject constructor(
             keepListening,
             quickPicks
         ) { pinned, keepListening, quick ->
-            val pinnedItems = pinned.map { it.toYTItem() }
+            val pinnedItems = pinned.map { it.toYTItem(getArtistSeparator(context)) }
             val filled = pinnedItems.toMutableList()
             val targetSize = 27
 
@@ -267,7 +268,7 @@ class HomeViewModel @Inject constructor(
 
     fun togglePin(item: YTItem) {
         viewModelScope.launch(Dispatchers.IO) {
-            val speedDialItem = SpeedDialItem.fromYTItem(item)
+            val speedDialItem = SpeedDialItem.fromYTItem(item, getArtistSeparator(context))
             val isPinned = database.speedDialDao.isPinned(speedDialItem.id).first()
             if (isPinned) {
                 database.speedDialDao.delete(speedDialItem.id)

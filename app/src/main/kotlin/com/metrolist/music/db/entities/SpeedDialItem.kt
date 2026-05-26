@@ -1,5 +1,4 @@
 package com.metrolist.music.db.entities
-import com.metrolist.music.utils.ARTIST_SEPARATOR
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -26,13 +25,13 @@ data class SpeedDialItem(
     val albumId: String? = null,
     val albumName: String? = null
 ) {
-    fun toYTItem(): YTItem {
+    fun toYTItem(separator: String): YTItem {
         return when (type) {
             "SONG" -> SongItem(
                 id = id,
                 title = title,
-                artists = subtitle?.split(", ")?.mapIndexed { index, name ->
-                    Artist(name = name, id = subtitleIds?.split(", ")?.getOrNull(index))
+                artists = subtitle?.split(separator)?.mapIndexed { index, name ->
+                    Artist(name = name, id = subtitleIds?.split(separator)?.getOrNull(index))
                 } ?: emptyList(),
                 album = if (albumId != null && albumName != null) com.metrolist.innertube.models.Album(name = albumName, id = albumId) else null,
                 thumbnail = thumbnailUrl ?: "",
@@ -42,8 +41,8 @@ data class SpeedDialItem(
                 browseId = id,
                 playlistId = secondaryId ?: "",
                 title = title,
-                artists = subtitle?.split(", ")?.mapIndexed { index, name ->
-                    Artist(name = name, id = subtitleIds?.split(", ")?.getOrNull(index))
+                artists = subtitle?.split(separator)?.mapIndexed { index, name ->
+                    Artist(name = name, id = subtitleIds?.split(separator)?.getOrNull(index))
                 },
                 thumbnail = thumbnailUrl ?: "",
                 explicit = explicit
@@ -72,12 +71,12 @@ data class SpeedDialItem(
     }
 
     companion object {
-        fun fromYTItem(item: YTItem): SpeedDialItem {
+        fun fromYTItem(item: YTItem, separator: String): SpeedDialItem {
             return when (item) {
                 is SongItem -> SpeedDialItem(
                     id = item.id,
                     title = item.title,
-                    subtitle = item.artists.joinToString(ARTIST_SEPARATOR) { it.name },
+                    subtitle = item.artists.joinToString(separator) { it.name },
                     subtitleIds = item.artists.joinToString(", ") { it.id ?: "" },
                     thumbnailUrl = item.thumbnail,
                     type = "SONG",
@@ -89,7 +88,7 @@ data class SpeedDialItem(
                     id = item.browseId,
                     secondaryId = item.playlistId,
                     title = item.title,
-                    subtitle = item.artists?.joinToString(ARTIST_SEPARATOR) { it.name },
+                    subtitle = item.artists?.joinToString(separator) { it.name },
                     subtitleIds = item.artists?.joinToString(", ") { it.id ?: "" },
                     thumbnailUrl = item.thumbnail,
                     type = "ALBUM",
