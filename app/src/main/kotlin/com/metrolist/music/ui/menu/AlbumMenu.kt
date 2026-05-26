@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.menu
 
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
@@ -462,7 +463,7 @@ fun AlbumMenu(
                                                 id = album.id,
                                                 secondaryId = album.album.playlistId,
                                                 title = album.album.title,
-                                                subtitle = album.artists.joinToString(", ") { it.name },
+                                                subtitle = album.artists.joinToString(ARTIST_SEPARATOR) { it.name },
                                                 subtitleIds = album.artists.joinToString(", ") { it.id },
                                                 thumbnailUrl = album.album.thumbnailUrl,
                                                 type = "ALBUM",

@@ -5,6 +5,7 @@
 
 package com.metrolist.music.viewmodels
 
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -384,7 +385,7 @@ class BackupRestoreViewModel @Inject constructor(
 
                                 val logEntry = ConvertedSongLog(
                                     title = title,
-                                    artists = artists.joinToString(", ") { it.name },
+                                    artists = artists.joinToString(ARTIST_SEPARATOR) { it.name },
                                 )
                                 recentLogs.add(0, logEntry)
                                 if (recentLogs.size > 3) {

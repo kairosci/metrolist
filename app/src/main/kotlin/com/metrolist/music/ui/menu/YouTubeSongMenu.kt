@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.menu
 
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
@@ -366,7 +367,7 @@ fun YouTubeSongMenu(
                                 val trackInfo = com.metrolist.music.listentogether.TrackInfo(
                                     id = song.id,
                                     title = song.title,
-                                    artist = artists.joinToString(", ") { it.name },
+                                    artist = artists.joinToString(ARTIST_SEPARATOR) { it.name },
                                     album = song.album?.name,
                                     duration = durationMs,
                                     thumbnail = song.thumbnail

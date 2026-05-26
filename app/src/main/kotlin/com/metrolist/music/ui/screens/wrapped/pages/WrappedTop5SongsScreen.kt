@@ -4,6 +4,7 @@
  */
 
 package com.metrolist.music.ui.screens.wrapped.pages
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -115,7 +116,7 @@ fun WrappedTop5SongsScreen(topSongs: List<SongWithStats>, isVisible: Boolean) {
                                     fontSize = 16.sp
                                 )
                                 Text(
-                                    text = song.artists.joinToString(", ") { it.name }.ifBlank { song.artistName.orEmpty() },
+                                    text = song.artists.joinToString(ARTIST_SEPARATOR) { it.name }.ifBlank { song.artistName.orEmpty() },
                                     color = Color.White.copy(alpha = 0.7f),
                                     fontSize = 14.sp
                                 )

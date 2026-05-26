@@ -5,6 +5,7 @@
 
 package com.metrolist.music.listentogether
 
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -1723,7 +1724,7 @@ class ListenTogetherManager
                 TrackInfo(
                     id = metadata.id,
                     title = metadata.title,
-                    artist = metadata.artists.joinToString(", ") { it.name },
+                    artist = metadata.artists.joinToString(ARTIST_SEPARATOR) { it.name },
                     album = metadata.album?.title,
                     duration = durationMs,
                     thumbnail = metadata.thumbnailUrl,
@@ -1823,7 +1824,7 @@ class ListenTogetherManager
             return TrackInfo(
                 id = metadata.id,
                 title = metadata.title,
-                artist = metadata.artists.joinToString(", ") { it.name },
+                artist = metadata.artists.joinToString(ARTIST_SEPARATOR) { it.name },
                 album = metadata.album?.title,
                 duration = durationMs,
                 thumbnail = metadata.thumbnailUrl,

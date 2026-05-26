@@ -7,6 +7,7 @@
 
 package com.metrolist.music.playback
 
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
@@ -4160,7 +4161,7 @@ class MusicService :
                 val songData = currentSong.value
                 val song = songData?.song
                 val songTitle = song?.title ?: getString(R.string.no_song_playing)
-                val artistName = songData?.artists?.joinToString(", ") { it.name } ?: getString(R.string.tap_to_open)
+                val artistName = songData?.artists?.joinToString(ARTIST_SEPARATOR) { it.name } ?: getString(R.string.tap_to_open)
                 val isLiked = songData?.song?.liked == true
 
                 widgetManager.updateWidgets(
