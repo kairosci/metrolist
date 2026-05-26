@@ -30,11 +30,10 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
     private var outputBuffer: ByteBuffer = EMPTY_BUFFER
     private var inputEnded = false
 
-    @Volatile
-    private var targetGainMb: Int = 0
+    private data class GainState(val targetGainMb: Int, val linearGain: Double)
 
     @Volatile
-    private var linearGain: Double = 1.0
+    private var currentGain: GainState = GainState(0, 1.0)
 
     companion object {
         private const val TAG = "VolumeNormalizationProcessor"
@@ -43,9 +42,9 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
 
     @Synchronized
     fun setTargetGain(gainMb: Int) {
-        if (targetGainMb != gainMb) {
-            targetGainMb = gainMb
-            linearGain = 10.0.pow(gainMb / 2000.0)
+        if (currentGain.targetGainMb != gainMb) {
+            val linearGain = 10.0.pow(gainMb / 2000.0)
+            currentGain = GainState(gainMb, linearGain)
             Timber.tag(TAG).d("Target gain set to $gainMb mB (Linear multiplier: $linearGain)")
         }
     }
@@ -69,7 +68,8 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
     override fun isActive(): Boolean = isActive
 
     override fun queueInput(inputBuffer: ByteBuffer) {
-        if (!enabled || targetGainMb == 0) {
+        val gain = currentGain
+        if (!enabled || gain.targetGainMb == 0) {
             val remaining = inputBuffer.remaining()
             if (remaining == 0) return
 
@@ -98,7 +98,7 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
 
         repeat(sampleCount) {
             val sample = inputBuffer.getShort()
-            val processed = (sample * linearGain).coerceIn(-32768.0, 32767.0).toInt().toShort()
+            val processed = (sample * gain.linearGain).coerceIn(-32768.0, 32767.0).toInt().toShort()
             outputBuffer.putShort(processed)
         }
 
@@ -132,8 +132,7 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
         channelCount = 0
         encoding = C.ENCODING_INVALID
         isActive = false
-        targetGainMb = 0
-        linearGain = 1.0
+        currentGain = GainState(0, 1.0)
         enabled = false
     }
 }
