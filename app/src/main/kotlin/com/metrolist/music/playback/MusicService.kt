@@ -69,6 +69,9 @@ import androidx.media3.exoplayer.analytics.PlaybackStatsListener
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.extractor.mkv.MatroskaExtractor
@@ -328,6 +331,29 @@ class MusicService :
     private val sleepTimerVolumeMultiplier = MutableStateFlow(1f)
     private val audioFocusVolumeMultiplier = MutableStateFlow(1f)
 
+    fun setVideoSurface(surface: android.view.Surface?) {
+        videoSurface = surface
+        if (::player.isInitialized) {
+            player.setVideoSurface(surface)
+        }
+    }
+
+    fun toggleVideoMode() {
+        videoModeEnabled.value = !videoModeEnabled.value
+        // Clear all caches to force re-resolution with new mode
+        val currentItem = player.currentMediaItem
+        val position = player.currentPosition
+        val wasPlaying = player.isPlaying
+        if (currentItem != null) {
+            songUrlCache.clear()
+            audioUrlCache.clear()
+            player.stop()
+            player.seekTo(player.currentMediaItemIndex, position)
+            player.prepare()
+            if (wasPlaying) player.play()
+        }
+    }
+
     fun toggleMute() {
         val newMutedState = !isMuted.value
         isMuted.value = newMutedState
@@ -412,6 +438,10 @@ class MusicService :
 
     val automixItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
+    val videoModeEnabled = MutableStateFlow(false)
+    var videoSurface: android.view.Surface? = null
+        private set
+
     // Tracks the original queue size to distinguish original items from auto-added ones
     private var originalQueueSize: Int = 0
 
@@ -435,6 +465,15 @@ class MusicService :
     private var cachedShufflePlaylistFirst = false
     @Volatile
     private var cachedAutoLoadMore = true
+
+    // Cached audio URLs for video-only streams (needed for MergingMediaSource)
+    private val audioUrlCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, String>(0, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean {
+                return size > 500
+            }
+        }
+    )
 
     // URL cache for stream URLs - class-level so it can be invalidated on errors
     private val songUrlCache = Collections.synchronizedMap(
@@ -3426,13 +3465,14 @@ class MusicService :
                 Timber.tag(TAG).i("BYPASSING CACHE for $mediaId due to quality change")
             }
 
-            Timber.tag(TAG).i("FETCHING STREAM: $mediaId | quality=$audioQuality")
+            Timber.tag(TAG).i("FETCHING STREAM: $mediaId | quality=$audioQuality | video=${videoModeEnabled.value}")
             val playbackData =
                 runBlocking(Dispatchers.IO) {
                     YTPlayerUtils.playerResponseForPlayback(
-                        mediaId,
+                        videoId = mediaId,
                         audioQuality = audioQuality,
                         connectivityManager = connectivityManager,
+                        enableVideo = videoModeEnabled.value,
                     )
                 }.getOrElse { throwable ->
                     when (throwable) {
@@ -3509,18 +3549,55 @@ class MusicService :
 
                 songUrlCache[mediaId] =
                     streamUrl to System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
+
+                if (nonNullPlayback.isVideoFormat && nonNullPlayback.audioUrl != null) {
+                    audioUrlCache[mediaId] = nonNullPlayback.audioUrl
+                } else {
+                    audioUrlCache.remove(mediaId)
+                }
+
                 return@Factory dataSpec.withUri(streamUrl.toUri()).subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
             }
         }
     }
 
-    private fun createMediaSourceFactory() =
-        DefaultMediaSourceFactory(
+    private fun createMediaSourceFactory(): MediaSource.Factory {
+        val cacheDataSourceFactory = createCacheDataSource()
+        val defaultFactory = DefaultMediaSourceFactory(
             createDataSourceFactory(),
             ExtractorsFactory {
                 arrayOf(MatroskaExtractor(), FragmentedMp4Extractor())
             },
         )
+        return object : MediaSource.Factory {
+            override fun createMediaSource(mediaItem: MediaItem): MediaSource {
+                val mediaId = mediaItem.mediaId
+                val audioUrl = audioUrlCache[mediaId]
+                if (audioUrl != null) {
+                    Timber.tag(TAG).d("Creating MergingMediaSource for $mediaId with video + audio")
+                    val videoSource = defaultFactory.createMediaSource(mediaItem)
+                    val audioSource = ProgressiveMediaSource.Factory(cacheDataSourceFactory)
+                        .createMediaSource(MediaItem.fromUri(audioUrl))
+                    return MergingMediaSource(videoSource, audioSource)
+                }
+                return defaultFactory.createMediaSource(mediaItem)
+            }
+
+            override fun getSupportedTypes(): IntArray = defaultFactory.supportedTypes
+
+            @androidx.annotation.OptIn(UnstableApi::class)
+            override fun setLoadErrorHandlingPolicy(loadErrorHandlingPolicy: androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy): MediaSource.Factory {
+                defaultFactory.setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+                return this
+            }
+
+            @androidx.annotation.OptIn(UnstableApi::class)
+            override fun setDrmSessionManagerProvider(drmSessionManagerProvider: androidx.media3.exoplayer.drm.DrmSessionManagerProvider): MediaSource.Factory {
+                defaultFactory.setDrmSessionManagerProvider(drmSessionManagerProvider)
+                return this
+            }
+        }
+    }
 
     private fun createRenderersFactory(
         eqProcessor: CustomEqualizerAudioProcessor,

@@ -68,6 +68,19 @@ object YTPlayerUtils {
         val format: PlayerResponse.StreamingData.Format,
         val streamUrl: String,
         val streamExpiresInSeconds: Int,
+        val isVideoFormat: Boolean = false,
+        val videoUrl: String? = null,
+        val audioUrl: String? = null,
+        val availableQualities: List<VideoQualityInfo> = emptyList(),
+    )
+
+    data class VideoQualityInfo(
+        val height: Int,
+        val width: Int?,
+        val fps: Int?,
+        val bitrate: Int,
+        val label: String,
+        val format: PlayerResponse.StreamingData.Format,
     )
     /**
      * Custom player response intended to use for playback.
@@ -79,6 +92,7 @@ object YTPlayerUtils {
         playlistId: String? = null,
         audioQuality: AudioQuality,
         connectivityManager: ConnectivityManager,
+        enableVideo: Boolean = false,
     ): Result<PlaybackData> = runCatching {
         Timber.tag(TAG).d("=== PLAYER RESPONSE FOR PLAYBACK ===")
         Timber.tag(TAG).d("videoId: $videoId")
@@ -154,6 +168,8 @@ object YTPlayerUtils {
         var streamUrl: String? = null
         var streamExpiresInSeconds: Int? = null
         var streamPlayerResponse: PlayerResponse? = null
+        var audioUrl: String? = null
+        var availableQualities: List<VideoQualityInfo> = emptyList()
         val retryMainPlayerResponse: PlayerResponse? = if (usedAgeRestrictedClient != null) mainPlayerResponse else null
 
         // Check current status
@@ -235,6 +251,7 @@ object YTPlayerUtils {
                         responseToUse,
                         audioQuality,
                         connectivityManager,
+                        enableVideo,
                     )
 
                 if (format == null) {
@@ -242,12 +259,55 @@ object YTPlayerUtils {
                     continue
                 }
 
-                Timber.tag(logTag).d("Format found: ${format.mimeType}, bitrate: ${format.bitrate}")
+                Timber.tag(logTag).d("Format found: ${format.mimeType}, bitrate: ${format.bitrate}, isVideo=${!format.isAudio}")
 
                 streamUrl = findUrlOrNull(format, videoId, responseToUse, skipNewPipe = wasOriginallyAgeRestricted)
                 if (streamUrl == null) {
                     Timber.tag(logTag).d("Stream URL not found for format")
                     continue
+                }
+
+                val isVideoFormat = enableVideo && format.width != null
+
+                if (isVideoFormat) {
+                    val allFormats = streamPlayerResponse.streamingData?.adaptiveFormats ?: emptyList()
+                    availableQualities = allFormats
+                        .filter { !it.isAudio && it.width != null && it.height != null }
+                        .sortedByDescending { it.height }
+                        .mapNotNull { f ->
+                            f.height?.let { h ->
+                                val label = buildString {
+                                    append(h)
+                                    append("p")
+                                    val fps = f.fps
+                                    if (fps != null && fps > 30) append("$fps")
+                                    if (f.qualityLabel != null) append(" ${f.qualityLabel}")
+                                }
+                                VideoQualityInfo(
+                                    height = h,
+                                    width = f.width,
+                                    fps = f.fps,
+                                    bitrate = f.bitrate,
+                                    label = label.trim(),
+                                    format = f,
+                                )
+                            }
+                        }
+
+                    val audioFormat = findAudioFormatForVideo(
+                        streamPlayerResponse,
+                        audioQuality,
+                        connectivityManager,
+                    )
+                    if (audioFormat != null) {
+                        Timber.tag(logTag).d("Found audio format for video: ${audioFormat.mimeType}, bitrate=${audioFormat.bitrate}")
+                        audioUrl = findUrlOrNull(audioFormat, videoId, responseToUse, skipNewPipe = wasOriginallyAgeRestricted)
+                        if (audioUrl == null) {
+                            Timber.tag(logTag).d("Audio URL not found, video-only stream may have no audio")
+                        }
+                    } else {
+                        Timber.tag(logTag).d("No separate audio format found, assuming muxed format")
+                    }
                 }
 
                 // Apply n-transform for throttle parameter handling
@@ -284,13 +344,16 @@ object YTPlayerUtils {
                         Timber.tag(TAG).d("  Original URL preview: ${streamUrl.take(100)}...")
 
                         val originalUrl = streamUrl
-                        // Use CipherDeobfuscator for n-transform (fixed implementation)
                         streamUrl = CipherDeobfuscator.transformNParamInUrl(streamUrl)
 
                         Timber.tag(TAG).d("  Transformed URL length: ${streamUrl.length}")
                         Timber.tag(TAG).d("  URL changed: ${originalUrl != streamUrl}")
 
-                        // Append pot= parameter with streaming data poToken
+                        if (audioUrl != null) {
+                            Timber.tag(TAG).d("Applying n-transform to audio URL too")
+                            audioUrl = CipherDeobfuscator.transformNParamInUrl(audioUrl!!)
+                        }
+
                         val needsPoToken = currentClient.useWebPoTokens && poToken?.streamingDataPoToken != null
                         Timber.tag(TAG).d("PoToken decision:")
                         Timber.tag(TAG).d("  needsPoToken: $needsPoToken")
@@ -300,12 +363,15 @@ object YTPlayerUtils {
                             Timber.tag(TAG).d("Appending pot= parameter to stream URL")
                             val separator = if ("?" in streamUrl) "&" else "?"
                             streamUrl = "${streamUrl}${separator}pot=${Uri.encode(poToken.streamingDataPoToken)}"
-                            Timber.tag(TAG).d("  Final URL length (with pot): ${streamUrl.length}")
+
+                            if (audioUrl != null) {
+                                val audioSep = if ("?" in audioUrl!!) "&" else "?"
+                                audioUrl = "${audioUrl!!}${audioSep}pot=${Uri.encode(poToken.streamingDataPoToken)}"
+                            }
                         }
                     } catch (e: Exception) {
                         Timber.tag(TAG).e(e, "N-transform or pot append failed: ${e.message}")
                         Timber.tag(TAG).e("Stack trace: ${e.stackTraceToString().take(500)}")
-                        // Continue with original URL
                     }
                 } else {
                     Timber.tag(TAG).d("Skipping n-transform (not required for this client/content)")
@@ -384,12 +450,16 @@ object YTPlayerUtils {
             println("[PLAYBACK_DEBUG] SUCCESS: Got playback data for uploaded track - format=${format.mimeType}, streamUrl=${streamUrl.take(100)}...")
         }
         PlaybackData(
-            audioConfig,
-            videoDetails,
-            playbackTracking,
-            format,
-            streamUrl,
-            streamExpiresInSeconds,
+            audioConfig = audioConfig,
+            videoDetails = videoDetails,
+            playbackTracking = playbackTracking,
+            format = format,
+            streamUrl = streamUrl,
+            streamExpiresInSeconds = streamExpiresInSeconds,
+            isVideoFormat = enableVideo && format.width != null,
+            videoUrl = if (enableVideo && format.width != null) streamUrl else null,
+            audioUrl = audioUrl,
+            availableQualities = availableQualities,
         )
     }.onFailure { e ->
         println("[PLAYBACK_DEBUG] EXCEPTION during playback for videoId=$videoId: ${e::class.simpleName}: ${e.message}")
@@ -413,10 +483,16 @@ object YTPlayerUtils {
         playerResponse: PlayerResponse,
         audioQuality: AudioQuality,
         connectivityManager: ConnectivityManager,
+        enableVideo: Boolean = false,
     ): PlayerResponse.StreamingData.Format? {
-        Timber.tag(logTag).d("Finding format with audioQuality: $audioQuality, network metered: ${connectivityManager.isActiveNetworkMetered}")
+        Timber.tag(logTag).d("Finding format with audioQuality: $audioQuality, network metered: ${connectivityManager.isActiveNetworkMetered}, enableVideo: $enableVideo")
 
         val adaptiveFormats = playerResponse.streamingData?.adaptiveFormats ?: return null
+        val muxedFormats = playerResponse.streamingData?.formats ?: emptyList()
+
+        if (enableVideo) {
+            return findVideoFormat(adaptiveFormats, muxedFormats, audioQuality, connectivityManager)
+        }
 
         val audioCapableFormats = adaptiveFormats.filter { it.isAudio }
         if (audioCapableFormats.isEmpty()) return null
@@ -486,6 +562,84 @@ object YTPlayerUtils {
         }
 
         return format
+    }
+
+    private fun findVideoFormat(
+        adaptiveFormats: List<PlayerResponse.StreamingData.Format>,
+        muxedFormats: List<PlayerResponse.StreamingData.Format>,
+        audioQuality: AudioQuality,
+        connectivityManager: ConnectivityManager,
+    ): PlayerResponse.StreamingData.Format? {
+        Timber.tag(logTag).d("Finding video format (muxed=${muxedFormats.size}, adaptive=${adaptiveFormats.size})")
+
+        val targetHeight = when (audioQuality) {
+            AudioQuality.VERY_HIGH -> 1080
+            AudioQuality.HIGH -> 720
+            AudioQuality.LOW -> 360
+            AudioQuality.AUTO -> if (connectivityManager.isActiveNetworkMetered) 480 else 720
+        }
+
+        val eligibleMuxed = muxedFormats.filter { it.width != null && it.height != null }
+        if (eligibleMuxed.isNotEmpty()) {
+            Timber.tag(logTag).d("Found ${eligibleMuxed.size} muxed formats")
+            val selected = eligibleMuxed
+                .filter { it.height != null }
+                .minByOrNull { kotlin.math.abs(it.height!! - targetHeight) }
+                ?: eligibleMuxed.maxByOrNull { it.bitrate }
+            if (selected != null) {
+                Timber.tag(logTag).d("Selected muxed format: ${selected.mimeType}, height=${selected.height}, bitrate=${selected.bitrate}")
+                return selected
+            }
+        }
+
+        val videoOnlyFormats = adaptiveFormats.filter { !it.isAudio && it.width != null && it.height != null }
+        if (videoOnlyFormats.isNotEmpty()) {
+            Timber.tag(logTag).d("No muxed formats, selecting from ${videoOnlyFormats.size} video-only formats")
+            val selected = videoOnlyFormats
+                .filter { it.height != null }
+                .minByOrNull { kotlin.math.abs(it.height!! - targetHeight) }
+                ?: videoOnlyFormats.maxByOrNull { it.bitrate }
+            if (selected != null) {
+                Timber.tag(logTag).d("Selected video-only format: ${selected.mimeType}, height=${selected.height}, bitrate=${selected.bitrate}")
+                return selected
+            }
+        }
+
+        Timber.tag(logTag).d("No video format found")
+        return null
+    }
+
+    fun findAudioFormatForVideo(
+        playerResponse: PlayerResponse,
+        audioQuality: AudioQuality,
+        connectivityManager: ConnectivityManager,
+    ): PlayerResponse.StreamingData.Format? {
+        val adaptiveFormats = playerResponse.streamingData?.adaptiveFormats ?: return null
+        val audioFormats = adaptiveFormats.filter { it.isAudio }
+        if (audioFormats.isEmpty()) return null
+
+        val maxBitrate = audioFormats.maxOfOrNull { it.bitrate } ?: return null
+        val targetBitrate = when (audioQuality) {
+            AudioQuality.VERY_HIGH -> maxBitrate.toDouble()
+            AudioQuality.HIGH -> minOf(maxBitrate.toDouble(), 256000.0)
+            AudioQuality.LOW -> minOf(maxBitrate.toDouble(), 128000.0)
+            AudioQuality.AUTO -> {
+                if (connectivityManager.isActiveNetworkMetered) {
+                    minOf(maxBitrate.toDouble(), 128000.0)
+                } else {
+                    maxBitrate.toDouble()
+                }
+            }
+        }
+
+        val opus141 = audioFormats.find { it.itag == 141 }
+        if (opus141 != null && (opus141.bitrate <= targetBitrate || audioQuality == AudioQuality.VERY_HIGH)) {
+            return opus141
+        }
+
+        val cappedFormats = audioFormats.filter { it.bitrate <= targetBitrate }
+        return cappedFormats.maxByOrNull { it.bitrate }
+            ?: audioFormats.minByOrNull { kotlin.math.abs(it.bitrate - targetBitrate) }
     }
     /**
      * Checks if the stream url returns a successful status.

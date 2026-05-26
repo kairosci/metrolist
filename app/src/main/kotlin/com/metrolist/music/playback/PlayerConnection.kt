@@ -175,6 +175,15 @@ class PlayerConnection(
     val isMuted = service.isMuted
 
     val waitingForNetworkConnection = service.waitingForNetworkConnection
+    val videoModeEnabled = service.videoModeEnabled
+
+    fun toggleVideoMode() {
+        service.toggleVideoMode()
+    }
+
+    fun setVideoSurface(surface: android.view.Surface?) {
+        service.setVideoSurface(surface)
+    }
 
     // Callback to check if playback changes should be blocked (e.g., Listen Together guest)
     var shouldBlockPlaybackChanges: (() -> Boolean)? = null

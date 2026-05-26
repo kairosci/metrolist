@@ -323,6 +323,7 @@ fun BottomSheetPlayer(
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
     val canSkipNext by playerConnection.canSkipNext.collectAsStateWithLifecycle()
     val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
+    val videoModeEnabled by playerConnection.videoModeEnabled.collectAsStateWithLifecycle()
 
     val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.DEFAULT)
     val squigglySlider by rememberPreference(SquigglySliderKey, defaultValue = false)
@@ -1176,11 +1177,36 @@ fun BottomSheetPlayer(
                                         modifier = Modifier.size(24.dp),
                                     )
                                 }
-                            }
                         }
+                    }
 
-                        AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
-                            if (showLyrics) {
+                    if (mediaMetadata.isVideoSong) {
+                        FilledIconButton(
+                            onClick = playerConnection::toggleVideoMode,
+                            shape = shareShape,
+                            colors =
+                                IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = textButtonColor,
+                                    contentColor = iconButtonColor,
+                                ),
+                            modifier = Modifier.size(42.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(
+                                    if (videoModeEnabled) {
+                                        R.drawable.videocam
+                                    } else {
+                                        R.drawable.videocam_off
+                                    },
+                                ),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
+
+                    AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
+                        if (showLyrics) {
                                 val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
                                 FilledIconButton(
                                     onClick = {
@@ -1295,6 +1321,33 @@ fun BottomSheetPlayer(
                                             .size(24.dp),
                                 )
                             }
+                        }
+                    }
+
+                    if (mediaMetadata.isVideoSong) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(textButtonColor)
+                                    .clickable { playerConnection.toggleVideoMode() },
+                        ) {
+                            Icon(
+                                painter = painterResource(
+                                    if (videoModeEnabled) {
+                                        R.drawable.videocam
+                                    } else {
+                                        R.drawable.videocam_off
+                                    },
+                                ),
+                                contentDescription = null,
+                                tint = iconButtonColor,
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.Center)
+                                        .size(24.dp),
+                            )
                         }
                     }
 

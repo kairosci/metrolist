@@ -48,7 +48,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.graphics.Color
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.view.View
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -212,6 +216,7 @@ fun Thumbnail(
     val queueTitle by playerConnection.queueTitle.collectAsStateWithLifecycle()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
     val canSkipNext by playerConnection.canSkipNext.collectAsStateWithLifecycle()
+    val videoModeEnabled by playerConnection.videoModeEnabled.collectAsStateWithLifecycle()
 
     // Preferences - computed once
     // Disable swipe for Listen Together guests
@@ -402,7 +407,10 @@ fun Thumbnail(
                                 isLandscape = isLandscape,
                                 isListenTogetherGuest = isListenTogetherGuest,
                                 currentMediaId = mediaMetadata?.id,
-                                currentMediaThumbnail = mediaMetadata?.thumbnailUrl
+                                currentMediaThumbnail = mediaMetadata?.thumbnailUrl,
+                                isCurrentItem = mediaMetadata?.id == item.mediaId,
+                                isVideoSong = mediaMetadata?.isVideoSong == true,
+                                videoModeEnabled = videoModeEnabled,
                             )
                         }
                     }
@@ -500,6 +508,9 @@ private fun ThumbnailItem(
     isListenTogetherGuest: Boolean = false,
     currentMediaId: String? = null,
     currentMediaThumbnail: String? = null,
+    isCurrentItem: Boolean = false,
+    isVideoSong: Boolean = false,
+    videoModeEnabled: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val incrementalSeekSkipEnabled by rememberPreference(SeekExtraSeconds, defaultValue = false)
@@ -574,7 +585,37 @@ private fun ThumbnailItem(
                     cropArtwork = cropAlbumArt
                 )
             }
-            
+
+            if (isVideoSong && isCurrentItem) {
+                AndroidView(
+                    factory = { ctx ->
+                        SurfaceView(ctx).apply {
+                            holder.addCallback(object : SurfaceHolder.Callback {
+                                override fun surfaceCreated(holder: SurfaceHolder) {
+                                    playerConnection.setVideoSurface(holder.surface)
+                                }
+
+                                override fun surfaceChanged(
+                                    holder: SurfaceHolder,
+                                    format: Int,
+                                    width: Int,
+                                    height: Int,
+                                ) {}
+
+                                override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                    playerConnection.setVideoSurface(null)
+                                }
+                            })
+                        }
+                    },
+                    update = { view ->
+                        view.visibility =
+                            if (videoModeEnabled) View.VISIBLE else View.INVISIBLE
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
             // Cast button at top-right corner of thumbnail
             CastButton(
                 modifier = Modifier
