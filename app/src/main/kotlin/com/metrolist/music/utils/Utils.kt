@@ -9,6 +9,8 @@ import android.content.Context
 import android.content.res.Configuration
 import java.util.Locale
 
+const val ARTIST_SEPARATOR = " e "
+
 fun reportException(throwable: Throwable) {
     throwable.printStackTrace()
 }

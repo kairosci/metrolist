@@ -4,6 +4,7 @@
  */
 
 package com.metrolist.music.ui.menu
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 
 import android.content.Intent
 import android.content.res.Configuration
@@ -583,7 +584,7 @@ fun SongMenu(
                                         com.metrolist.music.listentogether.TrackInfo(
                                             id = song.id,
                                             title = song.song.title,
-                                            artist = orderedArtists.joinToString(", ") { it.name },
+                                            artist = orderedArtists.joinToString(ARTIST_SEPARATOR) { it.name },
                                             album = song.song.albumName,
                                             duration = durationMs,
                                             thumbnail = song.thumbnailUrl,
@@ -681,7 +682,7 @@ fun SongMenu(
                                                 SpeedDialItem(
                                                     id = song.id,
                                                     title = song.song.title,
-                                                    subtitle = song.artists.joinToString(", ") { it.name },
+                                                    subtitle = song.artists.joinToString(ARTIST_SEPARATOR) { it.name },
                                                     subtitleIds = song.artists.joinToString(", ") { it.id },
                                                     thumbnailUrl = song.song.thumbnailUrl,
                                                     type = "SONG",

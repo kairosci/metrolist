@@ -1,4 +1,5 @@
 package com.metrolist.music.ui.component
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -99,7 +100,7 @@ fun SongSelectDropdown(
                                     maxLines = 1,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                val displayArtists = song.artists.joinToString(", ") { it.name }.ifBlank { song.artistName }
+                                val displayArtists = song.artists.joinToString(ARTIST_SEPARATOR) { it.name }.ifBlank { song.artistName }
                                 displayArtists?.let {
                                     Text(
                                         text = it,

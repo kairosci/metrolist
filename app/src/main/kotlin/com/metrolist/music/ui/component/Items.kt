@@ -7,6 +7,7 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animate
@@ -405,7 +406,7 @@ fun SongListItem(
         ListItem(
             title = song.song.title,
             subtitle = subtitleOverride ?: joinByBullet(
-                song.orderedArtists.joinToString { it.name },
+                song.orderedArtists.joinToString(ARTIST_SEPARATOR) { it.name },
                 makeTimeString(song.song.duration * 1000L)
             ),
             badges = badges,
@@ -475,7 +476,7 @@ fun SongGridItem(
     subtitle = {
         Text(
             text = joinByBullet(
-                song.orderedArtists.joinToString { it.name },
+                song.orderedArtists.joinToString(ARTIST_SEPARATOR) { it.name },
                 makeTimeString(song.song.duration * 1000L)
             ),
             style = MaterialTheme.typography.bodyMedium,
@@ -621,7 +622,7 @@ fun AlbumListItem(
 ) = ListItem(
     title = album.album.title,
     subtitle = joinByBullet(
-        album.artists.joinToString { it.name },
+        album.artists.joinToString(ARTIST_SEPARATOR) { it.name },
         pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount),
         album.album.year?.toString()
     ),
@@ -694,7 +695,7 @@ fun AlbumGridItem(
     },
     subtitle = {
         Text(
-            text = album.artists.joinToString { it.name },
+            text = album.artists.joinToString(ARTIST_SEPARATOR) { it.name },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 2,
@@ -931,7 +932,7 @@ fun MediaMetadataListItem(
         title = mediaMetadata.title,
         subtitle = if (mediaMetadata.suggestedBy != null) {
             buildAnnotatedString {
-                append(mediaMetadata.artists.joinToString { it.name })
+                append(mediaMetadata.artists.joinToString(ARTIST_SEPARATOR) { it.name })
                 append(" • ")
                 append(makeTimeString(mediaMetadata.duration * 1000L))
                 append(" • ")
@@ -942,7 +943,7 @@ fun MediaMetadataListItem(
         } else {
             AnnotatedString(
                 joinByBullet(
-                    mediaMetadata.artists.joinToString { it.name },
+                    mediaMetadata.artists.joinToString(ARTIST_SEPARATOR) { it.name },
                     makeTimeString(mediaMetadata.duration * 1000L)
                 )
             )
@@ -1006,8 +1007,8 @@ fun YouTubeListItem(
         ListItem(
             title = item.title,
             subtitle = when (item) {
-                is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
-                is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
+                is SongItem -> joinByBullet(item.artists.joinToString(ARTIST_SEPARATOR) { it.name }, makeTimeString(item.duration?.times(1000L)))
+                is AlbumItem -> joinByBullet(item.artists?.joinToString(ARTIST_SEPARATOR) { it.name }, item.year?.toString())
                 is ArtistItem -> null
                 is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
                 is PodcastItem -> joinByBullet(item.author?.name, item.episodeCountText)
@@ -1087,8 +1088,8 @@ fun YouTubeGridItem(
     },
     subtitle = {
         val subtitle = when (item) {
-            is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
-            is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
+            is SongItem -> joinByBullet(item.artists.joinToString(ARTIST_SEPARATOR) { it.name }, makeTimeString(item.duration?.times(1000L)))
+            is AlbumItem -> joinByBullet(item.artists?.joinToString(ARTIST_SEPARATOR) { it.name }, item.year?.toString())
             is ArtistItem -> null
             is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
             is PodcastItem -> joinByBullet(item.author?.name, item.episodeCountText)

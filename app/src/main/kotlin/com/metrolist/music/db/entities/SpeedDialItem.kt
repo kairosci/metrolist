@@ -1,4 +1,5 @@
 package com.metrolist.music.db.entities
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -76,7 +77,7 @@ data class SpeedDialItem(
                 is SongItem -> SpeedDialItem(
                     id = item.id,
                     title = item.title,
-                    subtitle = item.artists.joinToString(", ") { it.name },
+                    subtitle = item.artists.joinToString(ARTIST_SEPARATOR) { it.name },
                     subtitleIds = item.artists.joinToString(", ") { it.id ?: "" },
                     thumbnailUrl = item.thumbnail,
                     type = "SONG",
@@ -88,7 +89,7 @@ data class SpeedDialItem(
                     id = item.browseId,
                     secondaryId = item.playlistId,
                     title = item.title,
-                    subtitle = item.artists?.joinToString(", ") { it.name },
+                    subtitle = item.artists?.joinToString(ARTIST_SEPARATOR) { it.name },
                     subtitleIds = item.artists?.joinToString(", ") { it.id ?: "" },
                     thumbnailUrl = item.thumbnail,
                     type = "ALBUM",

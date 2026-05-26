@@ -1,4 +1,5 @@
 package com.metrolist.music.utils
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 
 import android.content.ContentValues
 import android.content.Context
@@ -129,7 +130,7 @@ fun exportYouTubePlaylistAsM3U(
                 // Add each song as M3U entry
                 songs.forEach { songItem ->
                     append("#EXTINF:${songItem.duration},")
-                    append("${songItem.artists.joinToString(" - ") { it.name }} - ${songItem.title}")
+                    append("${songItem.artists.joinToString(ARTIST_SEPARATOR) { it.name }} - ${songItem.title}")
                     append("\n")
                     // For M3U, we would typically include a URL, but since we don't have direct URLs,
                     // we'll use a placeholder that indicates this is a YouTube Music track

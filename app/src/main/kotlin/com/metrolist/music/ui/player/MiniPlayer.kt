@@ -7,6 +7,7 @@
 
 package com.metrolist.music.ui.player
 
+import com.metrolist.music.utils.ARTIST_SEPARATOR
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -670,9 +671,10 @@ private fun NewMiniPlayerSongInfo(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (metadata.explicit) MIcon.Explicit()
-                if (metadata.artists.any { it.name.isNotBlank() }) {
+                val displayArtists = metadata.artists.filter { it.id != null && it.name.isNotBlank() }
+                if (displayArtists.isNotEmpty()) {
                     Text(
-                        text = metadata.artists.joinToString { it.name },
+                        text = displayArtists.joinToString(ARTIST_SEPARATOR) { it.name },
                         color = onSurfaceColor.copy(alpha = 0.7f),
                         fontSize = 12.sp,
                         maxLines = 1,
