@@ -239,6 +239,7 @@ fun AlbumScreen(
                         navController = navController,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.secondary,
                             textAlign = TextAlign.Center,
                         ),
                         modifier = Modifier.fillMaxWidth(),

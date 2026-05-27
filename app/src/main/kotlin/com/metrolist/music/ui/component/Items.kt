@@ -119,6 +119,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
+import com.metrolist.music.utils.joinToArtistString
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -519,7 +520,7 @@ fun SongListItem(
                  } else {
                      Text(
                          text = subtitleOverride ?: joinByBullet(
-                            song.orderedArtists.joinToString(" ${stringResource(R.string.and)} ") { it.name },
+                            song.orderedArtists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
                              makeTimeString(song.song.duration * 1000L)
                          ),
                          style = MaterialTheme.typography.bodySmall,
@@ -618,7 +619,7 @@ fun SongGridItem(
         } else {
             Text(
                 text = joinByBullet(
-                    song.orderedArtists.joinToString(" ${stringResource(R.string.and)} ") { it.name },
+                    song.orderedArtists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
                     makeTimeString(song.song.duration * 1000L)
                 ),
                 style = MaterialTheme.typography.bodyMedium,
@@ -786,7 +787,7 @@ fun AlbumListItem(
         } else {
             Text(
                 text = joinByBullet(
-                    album.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name },
+                    album.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
                     pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount),
                     album.album.year?.toString()
                 ),
@@ -865,7 +866,7 @@ fun AlbumGridItem(
     },
      subtitle = {
          Text(
-             text = album.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name },
+             text = album.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
              style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 2,
@@ -1140,7 +1141,7 @@ fun MediaMetadataListItem(
             } else if (mediaMetadata.suggestedBy != null) {
                 Text(
                     text = buildAnnotatedString {
-                        append(mediaMetadata.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name })
+                        append(mediaMetadata.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name })
                         append(" • ")
                         append(makeTimeString(mediaMetadata.duration * 1000L))
                         append(" • ")
@@ -1155,7 +1156,7 @@ fun MediaMetadataListItem(
             } else {
                 Text(
                     text = joinByBullet(
-                        mediaMetadata.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name },
+                        mediaMetadata.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
                         makeTimeString(mediaMetadata.duration * 1000L)
                     ),
                     style = MaterialTheme.typography.bodyMedium,
@@ -1223,8 +1224,8 @@ fun YouTubeListItem(
         ListItem(
             title = item.title,
             subtitle = when (item) {
-                is SongItem -> joinByBullet(item.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name }, makeTimeString(item.duration?.times(1000L)))
-                is AlbumItem -> joinByBullet(item.artists?.joinToString(" ${stringResource(R.string.and)} ") { it.name }, item.year?.toString())
+                is SongItem -> joinByBullet(item.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name }, makeTimeString(item.duration?.times(1000L)))
+                is AlbumItem -> joinByBullet(item.artists?.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name }, item.year?.toString())
                 is ArtistItem -> null
                 is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
                 is PodcastItem -> joinByBullet(item.author?.name, item.episodeCountText)
@@ -1304,8 +1305,8 @@ fun YouTubeGridItem(
     },
      subtitle = {
          val subtitle = when (item) {
-             is SongItem -> joinByBullet(item.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name }, makeTimeString(item.duration?.times(1000L)))
-             is AlbumItem -> joinByBullet(item.artists?.joinToString(" ${stringResource(R.string.and)} ") { it.name }, item.year?.toString())
+             is SongItem -> joinByBullet(item.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name }, makeTimeString(item.duration?.times(1000L)))
+             is AlbumItem -> joinByBullet(item.artists?.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name }, item.year?.toString())
             is ArtistItem -> null
             is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
             is PodcastItem -> joinByBullet(item.author?.name, item.episodeCountText)

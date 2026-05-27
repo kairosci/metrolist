@@ -166,7 +166,7 @@ private fun CachedItem.toYTItem(): YTItem {
         "playlist" -> PlaylistItem(
             id = id,
             title = title,
-            thumbnail = thumbnail,
+            thumbnail = thumbnail.takeIf { it.isNotBlank() },
             author = author?.let { com.metrolist.innertube.models.Artist(it.name, it.id) },
             songCountText = songCountText,
             playEndpoint = null,
@@ -177,7 +177,7 @@ private fun CachedItem.toYTItem(): YTItem {
         "artist" -> ArtistItem(
             id = id,
             title = title,
-            thumbnail = thumbnail,
+            thumbnail = thumbnail.takeIf { it.isNotBlank() },
             channelId = channelId,
             playEndpoint = null,
             shuffleEndpoint = null,
@@ -186,7 +186,7 @@ private fun CachedItem.toYTItem(): YTItem {
         "podcast" -> PodcastItem(
             id = id,
             title = title,
-            thumbnail = thumbnail,
+            thumbnail = thumbnail.takeIf { it.isNotBlank() },
             author = author?.let { com.metrolist.innertube.models.Artist(it.name, it.id) },
             episodeCountText = episodeCountText,
             playEndpoint = null,

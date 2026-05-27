@@ -159,6 +159,7 @@ import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
+import com.metrolist.music.utils.joinToArtistString
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -368,7 +369,7 @@ fun CommunityPlaylistCard(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = song.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name },
+                                text = song.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                 maxLines = 1,
@@ -584,7 +585,7 @@ fun DailyDiscoverCard(
                         Text(
                             text =
                                 buildString {
-                                    append((dailyDiscover.recommendation as? SongItem)?.artists?.joinToString(" ${stringResource(R.string.and)} ") { it.name } ?: "")
+                                    append((dailyDiscover.recommendation as? SongItem)?.artists?.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name } ?: "")
                                     if (playCount > 0) {
                                         append(" • $playCount $playsString")
                                     }
@@ -611,7 +612,7 @@ fun DailyDiscoverCard(
                         text =
                             stringResource(
                                 messageRes,
-                                "${dailyDiscover.seed.title} • ${dailyDiscover.seed.artists.joinToString(" ${stringResource(R.string.and)} ") { it.name }}",
+                                "${dailyDiscover.seed.title} • ${dailyDiscover.seed.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name }}",
                             ),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,

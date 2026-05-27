@@ -158,7 +158,7 @@ class ArtistViewModel @Inject constructor(
                     viewModelScope.launch(Dispatchers.IO) {
                         try {
                             val cachedJson = serializeArtistPage(
-                                sections = filteredSections,
+                                sections = resolvedPage.sections,
                                 description = resolvedPage.description,
                                 subscriberCountText = resolvedPage.subscriberCountText,
                                 monthlyListenerCount = resolvedPage.monthlyListenerCount,
