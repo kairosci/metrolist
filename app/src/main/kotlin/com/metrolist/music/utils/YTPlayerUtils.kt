@@ -179,6 +179,8 @@ object YTPlayerUtils {
         var bestFallbackExpiry: Int? = null
         var bestFallbackResponse: PlayerResponse? = null
 
+        val hasHighQuality = mainPlayerResponse.streamingData?.adaptiveFormats?.any { it.audioQuality == "AUDIO_QUALITY_HIGH" } == true
+
         for (clientIndex in (startIndex until STREAM_FALLBACK_CLIENTS.size)) {
             // reset for each client
             format = null
@@ -338,7 +340,7 @@ object YTPlayerUtils {
                     else -> 0
                 }
 
-                if (audioQuality == AudioQuality.HIGH && format.audioQuality != "AUDIO_QUALITY_HIGH") {
+                if (audioQuality == AudioQuality.HIGH && format.audioQuality != "AUDIO_QUALITY_HIGH" && hasHighQuality) {
                     val isBetter = bestFallbackFormat == null ||
                         compareValuesBy(
                             format, bestFallbackFormat,
