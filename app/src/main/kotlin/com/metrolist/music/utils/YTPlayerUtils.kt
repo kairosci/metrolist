@@ -485,9 +485,9 @@ object YTPlayerUtils {
                             "AUDIO_QUALITY_LOW" -> 1
                             else -> 0
                         }
-                    }.thenByDescending { it.audioChannels ?: 2 }
-                        .thenByDescending { scoreCodec(it.mimeType) }
-                        .thenByDescending { it.bitrate }
+                    }.thenBy { it.audioChannels ?: 2 }
+                        .thenBy { scoreCodec(it.mimeType) }
+                        .thenBy { it.bitrate }
                 )
             }
 
