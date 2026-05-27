@@ -187,7 +187,7 @@ fun ArtistScreen(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
-            if (artistPage == null && !showLocal) {
+            if (artistPage == null && !showLocal && libraryArtist == null) {
                 item(key = "shimmer") {
                     ShimmerHost(
                         modifier =
@@ -510,6 +510,15 @@ fun ArtistScreen(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Show loading shimmer for sections when API hasn't returned yet
+                if (artistPage == null && !showLocal) {
+                    item(key = "section_shimmer") {
+                        ShimmerHost {
+                            repeat(4) { ListItemPlaceHolder() }
                         }
                     }
                 }

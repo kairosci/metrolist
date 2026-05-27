@@ -141,7 +141,6 @@ fun ClickableArtistText(
     navController: NavController,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodySmall,
-    color: Color = MaterialTheme.colorScheme.secondary,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
 ) {
@@ -162,7 +161,7 @@ fun ClickableArtistText(
     }
     ClickableText(
         text = annotatedString,
-        style = style.copy(color = color),
+        style = style,
         maxLines = maxLines,
         overflow = overflow,
         modifier = modifier,
@@ -182,7 +181,6 @@ fun ClickableArtistText(
     navController: NavController,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodySmall,
-    color: Color = MaterialTheme.colorScheme.secondary,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
 ) {
@@ -203,7 +201,7 @@ fun ClickableArtistText(
     }
     ClickableText(
         text = annotatedString,
-        style = style.copy(color = color),
+        style = style,
         maxLines = maxLines,
         overflow = overflow,
         modifier = modifier,
@@ -499,8 +497,7 @@ fun SongListItem(
                         ClickableArtistText(
                             artists = song.orderedArtists,
                             navController = navController,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary,
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.secondary),
                             modifier = Modifier.weight(1f)
                         )
                         Text(
@@ -597,8 +594,7 @@ fun SongGridItem(
                 ClickableArtistText(
                     artists = song.orderedArtists,
                     navController = navController,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.secondary),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -768,8 +764,7 @@ fun AlbumListItem(
                 ClickableArtistText(
                     artists = album.artists,
                     navController = navController,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.secondary),
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -1105,8 +1100,7 @@ fun MediaMetadataListItem(
                     ClickableArtistText(
                         artists = mediaMetadata.artists,
                         navController = navController,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.secondary,
+                        style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.secondary),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
