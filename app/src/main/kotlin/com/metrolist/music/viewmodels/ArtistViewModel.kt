@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -121,6 +122,30 @@ class ArtistViewModel @Inject constructor(
                         .filter { section -> section.items.isNotEmpty() }
 
                     artistPage = resolvedPage.copy(sections = filteredSections)
+                    // Persist artist thumbnail for offline/persistent use
+                    resolvedPage.artist?.let { apiArtist ->
+                        viewModelScope.launch(Dispatchers.IO) {
+                            val existingArtist = database.artist(artistId).firstOrNull()?.artist
+                            if (existingArtist != null) {
+                                database.update(
+                                    existingArtist.copy(
+                                        name = apiArtist.title,
+                                        channelId = apiArtist.channelId,
+                                        thumbnailUrl = apiArtist.thumbnail,
+                                    )
+                                )
+                            } else {
+                                database.insert(
+                                    ArtistEntity(
+                                        id = artistId,
+                                        name = apiArtist.title,
+                                        channelId = apiArtist.channelId,
+                                        thumbnailUrl = apiArtist.thumbnail,
+                                    )
+                                )
+                            }
+                        }
+                    }
                     // Store API subscription state
                     _apiSubscribed.value = resolvedPage.isSubscribed
                 }.onFailure {
