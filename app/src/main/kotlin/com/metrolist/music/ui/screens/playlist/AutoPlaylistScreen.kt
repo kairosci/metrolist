@@ -600,6 +600,7 @@ fun AutoPlaylistScreen(
 
                         SongListItem(
                             song = song,
+                            navController = navController,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             showInLibraryIcon = true,

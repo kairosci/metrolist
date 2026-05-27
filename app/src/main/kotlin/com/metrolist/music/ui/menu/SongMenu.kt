@@ -274,7 +274,7 @@ fun SongMenu(
             }
 
             items(listOf(song)) { song ->
-                SongListItem(song = song)
+                SongListItem(song = song, navController = navController)
             }
         }
     }
@@ -425,6 +425,7 @@ fun SongMenu(
 
     SongListItem(
         song = song,
+        navController = navController,
         badges = {},
         trailingContent = {
             // For episodes, show saved state and toggle save for later

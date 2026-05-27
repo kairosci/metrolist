@@ -185,6 +185,7 @@ fun QueueMenu(
     val isFavorite = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
     MediaMetadataListItem(
         mediaMetadata = mediaMetadata,
+        navController = navController,
         trailingContent = {
             IconButton(
                 onClick = {

@@ -836,6 +836,7 @@ fun Queue(
                             ) {
                                 MediaMetadataListItem(
                                     mediaMetadata = window.mediaItem.metadata!!,
+                                    navController = navController,
                                     isSelected = false,
                                     isActive = isActive,
                                     isPlaying = isPlaying && isActive,
@@ -969,6 +970,7 @@ fun Queue(
                         ) {
                             MediaMetadataListItem(
                                 mediaMetadata = item.metadata!!,
+                                navController = navController,
                                 trailingContent = {
                                     if (!isListenTogetherGuest) {
                                         IconButton(

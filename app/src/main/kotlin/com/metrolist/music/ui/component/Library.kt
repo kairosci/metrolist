@@ -99,6 +99,7 @@ fun LibraryAlbumListItem(
     isPlaying: Boolean = false
 ) = AlbumListItem(
     album = album,
+    navController = navController,
     isActive = isActive,
     isPlaying = isPlaying,
     trailingContent = {

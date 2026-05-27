@@ -428,6 +428,7 @@ fun AlbumScreen(
 
                     SongListItem(
                         song = song,
+                        navController = navController,
                         albumIndex = index + 1,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,

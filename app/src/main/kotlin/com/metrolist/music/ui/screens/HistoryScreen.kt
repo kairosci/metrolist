@@ -340,6 +340,7 @@ fun HistoryScreen(
 
                         SongListItem(
                             song = event.song,
+                            navController = navController,
                             isActive = event.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             showInLibraryIcon = true,

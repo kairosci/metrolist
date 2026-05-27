@@ -797,6 +797,7 @@ fun HomeScreen(
             is Song -> {
                 SongGridItem(
                     song = it,
+                    navController = navController,
                     modifier =
                         Modifier
                             .fillMaxWidth()
@@ -1808,6 +1809,7 @@ fun HomeScreen(
 
                                             SongListItem(
                                                 song = song!!,
+                                                navController = navController,
                                                 showInLibraryIcon = true,
                                                 isActive = song!!.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
@@ -2133,6 +2135,7 @@ fun HomeScreen(
 
                                             SongListItem(
                                                 song = song!!,
+                                                navController = navController,
                                                 showInLibraryIcon = true,
                                                 isActive = song!!.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,

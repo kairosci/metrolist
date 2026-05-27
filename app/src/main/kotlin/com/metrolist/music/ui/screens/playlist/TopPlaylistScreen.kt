@@ -317,6 +317,7 @@ fun TopPlaylistScreen(
 
                         SongListItem(
                             song = song,
+                            navController = navController,
                             albumIndex = index + 1,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,

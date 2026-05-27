@@ -623,6 +623,7 @@ fun LibraryMixScreen(
                             is Song -> {
                                 SongListItem(
                                     song = item,
+                                    navController = navController,
                                     showInLibraryIcon = true,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
@@ -722,6 +723,7 @@ fun LibraryMixScreen(
                             is Album -> {
                                 AlbumListItem(
                                     album = item,
+                                    navController = navController,
                                     isActive = item.id == mediaMetadata?.album?.id,
                                     isPlaying = isPlaying,
                                     trailingContent = {
@@ -953,6 +955,7 @@ fun LibraryMixScreen(
                             is Song -> {
                                 SongGridItem(
                                     song = item,
+                                    navController = navController,
                                     showInLibraryIcon = true,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,

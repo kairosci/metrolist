@@ -215,7 +215,7 @@ fun AlbumMenu(
             }
 
             items(notAddedList) { song ->
-                SongListItem(song = song)
+                SongListItem(song = song, navController = navController)
             }
         }
     }
@@ -270,6 +270,7 @@ fun AlbumMenu(
 
     AlbumListItem(
         album = album,
+        navController = navController,
         showLikedIcon = false,
         badges = {},
         trailingContent = {

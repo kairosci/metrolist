@@ -538,6 +538,7 @@ fun ArtistScreen(
                         ) { index, song ->
                             SongListItem(
                                 song = song,
+                                navController = navController,
                                 showInLibraryIcon = true,
                                 isActive = song.id == mediaMetadata?.id,
                                 isPlaying = isPlaying,

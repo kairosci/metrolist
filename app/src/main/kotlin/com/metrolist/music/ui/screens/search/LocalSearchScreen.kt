@@ -187,6 +187,7 @@ fun LocalSearchScreen(
                         is Song -> {
                             SongListItem(
                                 song = item,
+                                navController = navController,
                                 showInLibraryIcon = true,
                                 isActive = item.id == mediaMetadata?.id,
                                 isPlaying = isPlaying,
@@ -253,6 +254,7 @@ fun LocalSearchScreen(
                         is Album -> {
                             AlbumListItem(
                                 album = item,
+                                navController = navController,
                                 isActive = item.id == mediaMetadata?.album?.id,
                                 isPlaying = isPlaying,
                                 modifier =

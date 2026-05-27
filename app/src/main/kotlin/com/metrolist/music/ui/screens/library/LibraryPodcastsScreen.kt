@@ -402,6 +402,7 @@ fun LibraryPodcastsScreen(
                             )
                         SongListItem(
                             song = episode,
+                            navController = navController,
                             showInLibraryIcon = false,
                             isActive = episode.id == mediaMetadata?.id,
                             isPlaying = isPlaying,

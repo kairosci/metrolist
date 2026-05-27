@@ -264,6 +264,7 @@ fun CachePlaylistScreen(
 
                     SongListItem(
                         song = song,
+                        navController = navController,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
                         showInLibraryIcon = true,

@@ -190,7 +190,7 @@ fun YouTubeAlbumMenu(
             }
 
             items(notAddedList) { song ->
-                SongListItem(song = song)
+                SongListItem(song = song, navController = navController)
             }
         }
     }
