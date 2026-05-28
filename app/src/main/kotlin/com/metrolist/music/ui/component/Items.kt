@@ -97,8 +97,8 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
+import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalPlayerConnection
-import androidx.navigation.NavController
 import com.metrolist.music.R
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.GridItemSize
@@ -139,12 +139,12 @@ const val ActiveBoxAlpha = 0.6f
 @Composable
 fun ClickableArtistText(
     artists: List<ArtistEntity>,
-    navController: NavController,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodySmall,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
 ) {
+    val navController = LocalNavController.current
     val andString = stringResource(R.string.and)
     val annotatedString = remember(artists, andString) {
         buildAnnotatedString {
@@ -183,12 +183,12 @@ fun ClickableArtistText(
 @Composable
 fun ClickableArtistText(
     artists: List<MediaMetadata.Artist>,
-    navController: NavController,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodySmall,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
 ) {
+    val navController = LocalNavController.current
     val andString = stringResource(R.string.and)
     val annotatedString = remember(artists, andString) {
         buildAnnotatedString {
@@ -471,7 +471,6 @@ fun SongListItem(
     showInLibraryIcon: Boolean = false,
     showDownloadIcon: Boolean = true,
     subtitleOverride: String? = null,
-    navController: NavController? = null,
     badges: @Composable RowScope.() -> Unit = {
         if (showLikedIcon && song.song.liked) {
             Icon.Favorite()
@@ -501,11 +500,10 @@ fun SongListItem(
              title = song.song.title,
              subtitle = {
                  badges()
-                 if (navController != null && subtitleOverride == null) {
+                 if (subtitleOverride == null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ClickableArtistText(
                             artists = song.orderedArtists,
-                            navController = navController,
                             style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.secondary),
                             modifier = Modifier.weight(1f)
                         )
@@ -519,10 +517,7 @@ fun SongListItem(
                     }
                  } else {
                      Text(
-                         text = subtitleOverride ?: joinByBullet(
-                            song.orderedArtists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
-                             makeTimeString(song.song.duration * 1000L)
-                         ),
+                         text = subtitleOverride,
                          style = MaterialTheme.typography.bodySmall,
                          color = MaterialTheme.colorScheme.secondary,
                          maxLines = 1,
@@ -567,7 +562,6 @@ fun SongGridItem(
     showLikedIcon: Boolean = true,
     showInLibraryIcon: Boolean = false,
     showDownloadIcon: Boolean = true,
-    navController: NavController? = null,
     badges: @Composable RowScope.() -> Unit = {
         if (showLikedIcon && song.song.liked) {
             Icon.Favorite()
@@ -595,36 +589,22 @@ fun SongGridItem(
         )
     },
     subtitle = {
-        if (navController != null) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ClickableArtistText(
-                    artists = song.orderedArtists,
-                    navController = navController,
-                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.secondary),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = " | ${makeTimeString(song.song.duration * 1000L)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ClickableArtistText(
+                artists = song.orderedArtists,
+                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.secondary),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
             Text(
-                text = joinByBullet(
-                    song.orderedArtists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
-                    makeTimeString(song.song.duration * 1000L)
-                ),
+                text = " | ${makeTimeString(song.song.duration * 1000L)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -726,7 +706,6 @@ fun AlbumListItem(
     album: Album,
     modifier: Modifier = Modifier,
     showLikedIcon: Boolean = true,
-    navController: NavController? = null,
     badges: @Composable RowScope.() -> Unit = {
         val downloadUtil = LocalDownloadUtil.current
         val database = LocalDatabase.current
@@ -768,29 +747,14 @@ fun AlbumListItem(
     title = album.album.title,
     subtitle = {
         badges()
-        if (navController != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ClickableArtistText(
-                    artists = album.artists,
-                    navController = navController,
-                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.secondary),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = " | ${pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount)}${album.album.year?.let { " | $it" } ?: ""}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        } else {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ClickableArtistText(
+                artists = album.artists,
+                style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.secondary),
+                modifier = Modifier.weight(1f)
+            )
             Text(
-                text = joinByBullet(
-                    album.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
-                    pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount),
-                    album.album.year?.toString()
-                ),
+                text = " | ${pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount)}${album.album.year?.let { " | $it" } ?: ""}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
@@ -1097,73 +1061,43 @@ fun MediaMetadataListItem(
     isSelected: Boolean = false,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
-    navController: NavController? = null,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     ListItem(
         title = mediaMetadata.title,
         subtitle = {
             if (mediaMetadata.explicit) Icon.Explicit()
-            if (navController != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ClickableArtistText(
-                        artists = mediaMetadata.artists,
-                        navController = navController,
-                        style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.secondary),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ClickableArtistText(
+                    artists = mediaMetadata.artists,
+                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.secondary),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = " | ${makeTimeString(mediaMetadata.duration * 1000L)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (mediaMetadata.suggestedBy != null) {
                     Text(
-                        text = " | ${makeTimeString(mediaMetadata.duration * 1000L)}",
+                        text = " | ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.secondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (mediaMetadata.suggestedBy != null) {
-                        Text(
-                            text = " | ",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = mediaMetadata.suggestedBy,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.secondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    Text(
+                        text = mediaMetadata.suggestedBy,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.secondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-            } else if (mediaMetadata.suggestedBy != null) {
-                Text(
-                    text = buildAnnotatedString {
-                        append(mediaMetadata.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name })
-                        append(" | ")
-                        append(makeTimeString(mediaMetadata.duration * 1000L))
-                        append(" | ")
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(mediaMetadata.suggestedBy)
-                        }
-                    },
-                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.secondary),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            } else {
-                Text(
-                    text = joinByBullet(
-                        mediaMetadata.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
-                        makeTimeString(mediaMetadata.duration * 1000L)
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         },
         thumbnailContent = {

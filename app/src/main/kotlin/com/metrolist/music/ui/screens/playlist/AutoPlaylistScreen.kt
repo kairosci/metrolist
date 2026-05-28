@@ -600,7 +600,6 @@ fun AutoPlaylistScreen(
 
                         SongListItem(
                             song = song,
-                            navController = navController,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             showInLibraryIcon = true,
@@ -616,7 +615,6 @@ fun AutoPlaylistScreen(
                                             menuState.show {
                                                 SongMenu(
                                                     originalSong = song,
-                                                    navController = navController,
                                                     onDismiss = menuState::dismiss,
                                                 )
                                             }

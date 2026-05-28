@@ -88,7 +88,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
+import com.metrolist.music.LocalNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
@@ -498,9 +498,9 @@ fun CommunityPlaylistCard(
 fun DailyDiscoverCard(
     dailyDiscover: com.metrolist.music.viewmodels.DailyDiscoverItem,
     onClick: () -> Unit,
-    navController: NavController,
     modifier: Modifier = Modifier,
 ) {
+    val navController = LocalNavController.current
     val database = LocalDatabase.current
     val playCount by database.getLifetimePlayCount(dailyDiscover.recommendation.id).collectAsStateWithLifecycle(initialValue = 0)
     val menuState = LocalMenuState.current
@@ -522,7 +522,6 @@ fun DailyDiscoverCard(
                             menuState.show {
                                 YouTubeSongMenu(
                                     song = song,
-                                    navController = navController,
                                     onDismiss = { menuState.dismiss() },
                                 )
                             }
@@ -629,10 +628,10 @@ fun DailyDiscoverCard(
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
-    navController: NavController,
     snackbarHostState: SnackbarHostState,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
+    val navController = LocalNavController.current
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val database = LocalDatabase.current
@@ -798,7 +797,6 @@ fun HomeScreen(
             is Song -> {
                 SongGridItem(
                     song = it,
-                    navController = navController,
                     modifier =
                         Modifier
                             .fillMaxWidth()
@@ -828,7 +826,6 @@ fun HomeScreen(
                                     menuState.show {
                                         SongMenu(
                                             originalSong = it,
-                                            navController = navController,
                                             onDismiss = menuState::dismiss,
                                         )
                                     }
@@ -857,7 +854,6 @@ fun HomeScreen(
                                     menuState.show {
                                         AlbumMenu(
                                             originalAlbum = it,
-                                            navController = navController,
                                             onDismiss = menuState::dismiss,
                                         )
                                     }
@@ -963,7 +959,6 @@ fun HomeScreen(
                                     is SongItem -> {
                                         YouTubeSongMenu(
                                             song = item,
-                                            navController = navController,
                                             onDismiss = menuState::dismiss,
                                         )
                                     }
@@ -971,7 +966,6 @@ fun HomeScreen(
                                     is AlbumItem -> {
                                         YouTubeAlbumMenu(
                                             albumItem = item,
-                                            navController = navController,
                                             onDismiss = menuState::dismiss,
                                         )
                                     }
@@ -1002,7 +996,6 @@ fun HomeScreen(
                                     is EpisodeItem -> {
                                         YouTubeSongMenu(
                                             song = item.asSongItem(),
-                                            navController = navController,
                                             onDismiss = menuState::dismiss,
                                         )
                                     }
@@ -1673,7 +1666,6 @@ fun HomeScreen(
                                                                                                 is SongItem -> {
                                                                                                     YouTubeSongMenu(
                                                                                                         song = item,
-                                                                                                        navController = navController,
                                                                                                         onDismiss = menuState::dismiss,
                                                                                                     )
                                                                                                 }
@@ -1681,7 +1673,6 @@ fun HomeScreen(
                                                                                                 is AlbumItem -> {
                                                                                                     YouTubeAlbumMenu(
                                                                                                         albumItem = item,
-                                                                                                        navController = navController,
                                                                                                         onDismiss = menuState::dismiss,
                                                                                                     )
                                                                                                 }
@@ -1712,7 +1703,6 @@ fun HomeScreen(
                                                                                                 is EpisodeItem -> {
                                                                                                     YouTubeSongMenu(
                                                                                                         song = item.asSongItem(),
-                                                                                                        navController = navController,
                                                                                                         onDismiss = menuState::dismiss,
                                                                                                     )
                                                                                                 }
@@ -1810,7 +1800,6 @@ fun HomeScreen(
 
                                             SongListItem(
                                                 song = song!!,
-                                                navController = navController,
                                                 showInLibraryIcon = true,
                                                 isActive = song!!.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
@@ -1821,7 +1810,6 @@ fun HomeScreen(
                                                             menuState.show {
                                                                 SongMenu(
                                                                     originalSong = song!!,
-                                                                    navController = navController,
                                                                     onDismiss = menuState::dismiss,
                                                                 )
                                                             }
@@ -1862,7 +1850,6 @@ fun HomeScreen(
                                                                 menuState.show {
                                                                     SongMenu(
                                                                         originalSong = song!!,
-                                                                        navController = navController,
                                                                         onDismiss = menuState::dismiss,
                                                                     )
                                                                 }
@@ -1978,7 +1965,6 @@ fun HomeScreen(
                                                         }
                                                     }
                                                 },
-                                                navController = navController,
                                                 modifier = Modifier.maskClip(MaterialTheme.shapes.extraLarge),
                                             )
                                         }
@@ -2136,7 +2122,6 @@ fun HomeScreen(
 
                                             SongListItem(
                                                 song = song!!,
-                                                navController = navController,
                                                 showInLibraryIcon = true,
                                                 isActive = song!!.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
@@ -2148,7 +2133,6 @@ fun HomeScreen(
                                                             menuState.show {
                                                                 SongMenu(
                                                                     originalSong = song!!,
-                                                                    navController = navController,
                                                                     onDismiss = menuState::dismiss,
                                                                 )
                                                             }
@@ -2189,7 +2173,6 @@ fun HomeScreen(
                                                                 menuState.show {
                                                                     SongMenu(
                                                                         originalSong = song!!,
-                                                                        navController = navController,
                                                                         onDismiss = menuState::dismiss,
                                                                     )
                                                                 }
@@ -2378,7 +2361,6 @@ fun HomeScreen(
                                                                 menuState.show {
                                                                     YouTubeSongMenu(
                                                                         song = song,
-                                                                        navController = navController,
                                                                         onDismiss = menuState::dismiss,
                                                                     )
                                                                 }
@@ -2416,7 +2398,6 @@ fun HomeScreen(
                                                                     menuState.show {
                                                                         YouTubeSongMenu(
                                                                             song = song,
-                                                                            navController = navController,
                                                                             onDismiss = menuState::dismiss,
                                                                         )
                                                                     }

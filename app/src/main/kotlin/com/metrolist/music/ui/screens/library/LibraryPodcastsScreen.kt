@@ -402,7 +402,6 @@ fun LibraryPodcastsScreen(
                             )
                         SongListItem(
                             song = episode,
-                            navController = navController,
                             showInLibraryIcon = false,
                             isActive = episode.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
@@ -415,7 +414,6 @@ fun LibraryPodcastsScreen(
                                         menuState.show {
                                             SongMenu(
                                                 originalSong = episode,
-                                                navController = navController,
                                                 onDismiss = menuState::dismiss,
                                             )
                                         }

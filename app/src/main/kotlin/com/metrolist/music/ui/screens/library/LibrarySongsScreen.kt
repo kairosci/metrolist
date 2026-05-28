@@ -464,7 +464,6 @@ fun LibrarySongsScreen(
             ) { index, song ->
                 SongListItem(
                     song = song,
-                    navController = navController,
                     showInLibraryIcon = true,
                     isActive = song.id == mediaMetadata?.id,
                     isPlaying = isPlaying,
@@ -476,7 +475,6 @@ fun LibrarySongsScreen(
                                 menuState.show {
                                     SongMenu(
                                         originalSong = song,
-                                        navController = navController,
                                         onDismiss = menuState::dismiss,
                                     )
                                 }

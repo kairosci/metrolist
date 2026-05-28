@@ -55,8 +55,8 @@ import androidx.core.net.toUri
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
-import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.metrolist.music.LocalNavController
 import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
@@ -84,12 +84,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun QueueMenu(
     mediaMetadata: MediaMetadata?,
-    navController: NavController,
     playerBottomSheetState: BottomSheetState,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     mediaMetadata ?: return
+    val navController = LocalNavController.current
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -185,7 +185,6 @@ fun QueueMenu(
     val isFavorite = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
     MediaMetadataListItem(
         mediaMetadata = mediaMetadata,
-        navController = navController,
         trailingContent = {
             IconButton(
                 onClick = {

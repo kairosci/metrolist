@@ -264,7 +264,6 @@ fun CachePlaylistScreen(
 
                     SongListItem(
                         song = song,
-                        navController = navController,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
                         showInLibraryIcon = true,
@@ -279,7 +278,6 @@ fun CachePlaylistScreen(
                                     menuState.show {
                                         SongMenu(
                                             originalSong = song,
-                                            navController = navController,
                                             onDismiss = menuState::dismiss,
                                             isFromCache = true,
                                         )

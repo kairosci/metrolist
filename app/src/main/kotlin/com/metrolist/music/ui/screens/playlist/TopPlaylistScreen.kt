@@ -317,7 +317,6 @@ fun TopPlaylistScreen(
 
                         SongListItem(
                             song = song,
-                            navController = navController,
                             albumIndex = index + 1,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
@@ -334,7 +333,6 @@ fun TopPlaylistScreen(
                                             menuState.show {
                                                 SongMenu(
                                                     originalSong = song,
-                                                    navController = navController,
                                                     onDismiss = menuState::dismiss,
                                                 )
                                             }

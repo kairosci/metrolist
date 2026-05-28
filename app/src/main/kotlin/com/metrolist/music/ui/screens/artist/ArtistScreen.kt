@@ -547,7 +547,6 @@ fun ArtistScreen(
                         ) { index, song ->
                             SongListItem(
                                 song = song,
-                                navController = navController,
                                 showInLibraryIcon = true,
                                 isActive = song.id == mediaMetadata?.id,
                                 isPlaying = isPlaying,
@@ -557,7 +556,6 @@ fun ArtistScreen(
                                             menuState.show {
                                                 SongMenu(
                                                     originalSong = song,
-                                                    navController = navController,
                                                     onDismiss = menuState::dismiss,
                                                 )
                                             }
@@ -593,7 +591,6 @@ fun ArtistScreen(
                                                 menuState.show {
                                                     SongMenu(
                                                         originalSong = song,
-                                                        navController = navController,
                                                         onDismiss = menuState::dismiss,
                                                     )
                                                 }
@@ -644,7 +641,6 @@ fun ArtistScreen(
                                                         menuState.show {
                                                             AlbumMenu(
                                                                 originalAlbum = album,
-                                                                navController = navController,
                                                                 onDismiss = menuState::dismiss,
                                                             )
                                                         }
@@ -689,7 +685,6 @@ fun ArtistScreen(
                                                 menuState.show {
                                                     YouTubeSongMenu(
                                                         song = song,
-                                                        navController = navController,
                                                         onDismiss = menuState::dismiss,
                                                     )
                                                 }
@@ -723,7 +718,6 @@ fun ArtistScreen(
                                                     menuState.show {
                                                         YouTubeSongMenu(
                                                             song = song,
-                                                            navController = navController,
                                                             onDismiss = menuState::dismiss,
                                                         )
                                                     }
@@ -802,7 +796,6 @@ fun ArtistScreen(
                                                                     is SongItem -> {
                                                                         YouTubeSongMenu(
                                                                             song = item,
-                                                                            navController = navController,
                                                                             onDismiss = menuState::dismiss,
                                                                         )
                                                                     }
@@ -810,7 +803,6 @@ fun ArtistScreen(
                                                                     is AlbumItem -> {
                                                                         YouTubeAlbumMenu(
                                                                             albumItem = item,
-                                                                            navController = navController,
                                                                             onDismiss = menuState::dismiss,
                                                                         )
                                                                     }
@@ -841,7 +833,6 @@ fun ArtistScreen(
                                                                     is EpisodeItem -> {
                                                                         YouTubeSongMenu(
                                                                             song = item.asSongItem(),
-                                                                            navController = navController,
                                                                             onDismiss = menuState::dismiss,
                                                                         )
                                                                     }

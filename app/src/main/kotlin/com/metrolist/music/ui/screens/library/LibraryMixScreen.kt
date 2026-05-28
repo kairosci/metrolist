@@ -623,7 +623,6 @@ fun LibraryMixScreen(
                             is Song -> {
                                 SongListItem(
                                     song = item,
-                                    navController = navController,
                                     showInLibraryIcon = true,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
@@ -633,7 +632,6 @@ fun LibraryMixScreen(
                                                 menuState.show {
                                                     SongMenu(
                                                         originalSong = item,
-                                                        navController = navController,
                                                         onDismiss = menuState::dismiss,
                                                     )
                                                 }
@@ -668,7 +666,6 @@ fun LibraryMixScreen(
                                                     menuState.show {
                                                         SongMenu(
                                                             originalSong = item,
-                                                            navController = navController,
                                                             onDismiss = menuState::dismiss,
                                                         )
                                                     }
@@ -723,7 +720,6 @@ fun LibraryMixScreen(
                             is Album -> {
                                 AlbumListItem(
                                     album = item,
-                                    navController = navController,
                                     isActive = item.id == mediaMetadata?.album?.id,
                                     isPlaying = isPlaying,
                                     trailingContent = {
@@ -732,7 +728,6 @@ fun LibraryMixScreen(
                                                 menuState.show {
                                                     AlbumMenu(
                                                         originalAlbum = item,
-                                                        navController = navController,
                                                         onDismiss = menuState::dismiss,
                                                     )
                                                 }
@@ -756,7 +751,6 @@ fun LibraryMixScreen(
                                                     menuState.show {
                                                         AlbumMenu(
                                                             originalAlbum = item,
-                                                            navController = navController,
                                                             onDismiss = menuState::dismiss,
                                                         )
                                                     }
@@ -955,7 +949,6 @@ fun LibraryMixScreen(
                             is Song -> {
                                 SongGridItem(
                                     song = item,
-                                    navController = navController,
                                     showInLibraryIcon = true,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
@@ -983,7 +976,6 @@ fun LibraryMixScreen(
                                                     menuState.show {
                                                         SongMenu(
                                                             originalSong = item,
-                                                            navController = navController,
                                                             onDismiss = menuState::dismiss,
                                                         )
                                                     }
@@ -1037,7 +1029,6 @@ fun LibraryMixScreen(
                                                     menuState.show {
                                                         AlbumMenu(
                                                             originalAlbum = item,
-                                                            navController = navController,
                                                             onDismiss = menuState::dismiss,
                                                         )
                                                     }

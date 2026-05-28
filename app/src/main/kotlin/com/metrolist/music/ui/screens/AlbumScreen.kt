@@ -236,7 +236,6 @@ fun AlbumScreen(
                     // Artist Names - Below the album name
                     ClickableArtistText(
                         artists = albumWithSongs.artists,
-                        navController = navController,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Normal,
                             color = MaterialTheme.colorScheme.secondary,
@@ -369,7 +368,6 @@ fun AlbumScreen(
                                                 albumWithSongs.album,
                                                 albumWithSongs.artists,
                                             ),
-                                        navController = navController,
                                         onDismiss = menuState::dismiss,
                                     )
                                 }
@@ -408,7 +406,6 @@ fun AlbumScreen(
 
                     SongListItem(
                         song = song,
-                        navController = navController,
                         albumIndex = index + 1,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
@@ -425,7 +422,6 @@ fun AlbumScreen(
                                         menuState.show {
                                             SongMenu(
                                                 originalSong = song,
-                                                navController = navController,
                                                 onDismiss = menuState::dismiss,
                                             )
                                         }
@@ -498,7 +494,6 @@ fun AlbumScreen(
                                                 menuState.show {
                                                     YouTubeAlbumMenu(
                                                         albumItem = item,
-                                                        navController = navController,
                                                         onDismiss = menuState::dismiss,
                                                     )
                                                 }
