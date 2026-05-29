@@ -55,7 +55,7 @@ data class SearchSummaryPage(
                     SearchSummary(
                         title = s.title,
                         items =
-                            s.items.filterVideoSongs(true).ifEmpty {
+                            s.items.filterVideoSongs(disableVideos).ifEmpty {
                                 return@mapNotNull null
                             },
                     )
@@ -72,7 +72,7 @@ data class SearchSummaryPage(
                     SearchSummary(
                         title = s.title,
                         items =
-                            s.items.filterYoutubeShorts(true).ifEmpty {
+                            s.items.filterYoutubeShorts(enabled).ifEmpty {
                                 return@mapNotNull null
                             },
                     )
