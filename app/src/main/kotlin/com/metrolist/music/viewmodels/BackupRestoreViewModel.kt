@@ -146,6 +146,8 @@ class BackupRestoreViewModel @Inject constructor(
                                     runBlocking(Dispatchers.IO) { database.checkpoint() }
                                     database.close()
                                     Timber.tag("RESTORE").i("Overwriting DB at path: $currentDbPath")
+                                    File("$currentDbPath-wal").takeIf { it.exists() }?.delete()
+                                    File("$currentDbPath-shm").takeIf { it.exists() }?.delete()
                                     FileOutputStream(currentDbPath).use { outputStream ->
                                         inputStream.copyTo(outputStream)
                                     }
