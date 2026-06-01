@@ -54,7 +54,7 @@ import java.util.Date
 import java.util.Locale
 
 class MusicDatabase(
-    private val delegate: InternalDatabase,
+    val delegate: InternalDatabase,
 ) : DatabaseDao by delegate.dao {
     val speedDialDao: SpeedDialDao
         get() = delegate.speedDialDao
