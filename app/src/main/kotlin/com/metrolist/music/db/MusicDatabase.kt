@@ -177,6 +177,7 @@ abstract class InternalDatabase : RoomDatabase() {
                             MIGRATION_21_24,
                             MIGRATION_22_24,
                             MIGRATION_24_25,
+                            MIGRATION_38_37,
                         ).fallbackToDestructiveMigration(dropAllTables = true)
                         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                         .setTransactionExecutor(
@@ -810,6 +811,21 @@ val MIGRATION_24_25 =
                 // Add the column allowing NULL values (since existing rows won't have this data)
                 db.execSQL("ALTER TABLE format ADD COLUMN perceptualLoudnessDb REAL DEFAULT NULL")
             }
+        }
+    }
+
+val MIGRATION_38_37 =
+    object : Migration(38, 37) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS `ArtistPageCache`")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `artist_new` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `thumbnailUrl` TEXT, `channelId` TEXT, `lastUpdateTime` INTEGER NOT NULL, `bookmarkedAt` INTEGER, `isLocal` INTEGER NOT NULL DEFAULT false, `isPodcastChannel` INTEGER NOT NULL DEFAULT false, PRIMARY KEY(`id`))"
+            )
+            db.execSQL(
+                "INSERT INTO `artist_new` (`id`, `name`, `thumbnailUrl`, `channelId`, `lastUpdateTime`, `bookmarkedAt`, `isLocal`, `isPodcastChannel`) SELECT `id`, `name`, `thumbnailUrl`, `channelId`, `lastUpdateTime`, `bookmarkedAt`, `isLocal`, `isPodcastChannel` FROM `artist`"
+            )
+            db.execSQL("DROP TABLE `artist`")
+            db.execSQL("ALTER TABLE `artist_new` RENAME TO `artist`")
         }
     }
 
