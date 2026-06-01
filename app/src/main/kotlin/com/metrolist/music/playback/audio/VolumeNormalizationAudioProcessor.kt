@@ -65,7 +65,7 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
         Timber.tag(TAG).d("Configured: sampleRate=$sampleRate, channels=$channelCount, encoding=$encoding")
 
         isActive = true
-        return AudioProcessor.AudioFormat(sampleRate, channelCount, C.ENCODING_PCM_16BIT)
+        return AudioProcessor.AudioFormat(sampleRate, channelCount, encoding)
     }
 
     override fun isActive(): Boolean = isActive
@@ -78,7 +78,7 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
         if (inputSize == 0) return
 
         val sampleCount = inputSize / bytesPerSample
-        val out = replaceOutputBuffer(sampleCount * 2)
+        val out = replaceOutputBuffer(sampleCount * bytesPerSample)
 
         inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         out.order(ByteOrder.LITTLE_ENDIAN)
@@ -101,31 +101,36 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
 
             C.ENCODING_PCM_24BIT -> {
                 repeat(sampleCount) {
-                    val sample = read24Bit(inputBuffer) shr 8
+                    val b0 = inputBuffer.get().toInt() and 0xFF
+                    val b1 = inputBuffer.get().toInt() and 0xFF
+                    val b2 = inputBuffer.get().toInt()
+                    val sample = (b2 shl 16) or (b1 shl 8) or b0
+
                     val processed = if (applyGain) {
                         (sample * gain.linearGain)
-                            .coerceIn(-32768.0, 32767.0)
+                            .coerceIn(-8388608.0, 8388607.0)
                             .toInt()
-                            .toShort()
                     } else {
-                        sample.toShort()
+                        sample
                     }
-                    out.putShort(processed)
+                    out.put((processed and 0xFF).toByte())
+                    out.put(((processed shr 8) and 0xFF).toByte())
+                    out.put(((processed shr 16) and 0xFF).toByte())
                 }
             }
 
             C.ENCODING_PCM_32BIT -> {
                 repeat(sampleCount) {
-                    val sample = inputBuffer.getInt() shr 16
+                    val sample = inputBuffer.getInt()
                     val processed = if (applyGain) {
                         (sample * gain.linearGain)
-                            .coerceIn(-32768.0, 32767.0)
+                            .coerceIn(-2147483648.0, 2147483647.0)
+                            .toLong()
                             .toInt()
-                            .toShort()
                     } else {
-                        sample.toShort()
+                        sample
                     }
-                    out.putShort(processed)
+                    out.putInt(processed)
                 }
             }
 
@@ -137,9 +142,7 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
                     } else {
                         sample
                     }
-                    out.putShort(
-                        (processed * 32767f).toInt().coerceIn(-32768, 32767).toShort()
-                    )
+                    out.putFloat(processed)
                 }
             }
         }
@@ -175,8 +178,7 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
         encoding = C.ENCODING_INVALID
         bytesPerSample = 0
         isActive = false
-        currentGain = GainState(0, 1.0)
-        enabled = false
+        // DO NOT reset enabled or currentGain, as they are controlled by the service
     }
 
     private fun replaceOutputBuffer(size: Int): ByteBuffer {
@@ -194,6 +196,4 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
         val b2 = buffer.get().toInt()
         return (b2 shl 16) or (b1 shl 8) or b0
     }
-
-
 }
