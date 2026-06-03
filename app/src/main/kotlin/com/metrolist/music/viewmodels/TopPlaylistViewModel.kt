@@ -45,7 +45,12 @@ constructor(
             context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
         ) { period, hideVideoSongs -> period to hideVideoSongs }
             .flatMapLatest { (period, hideVideoSongs) ->
-                database.mostPlayedSongs(period.toLocalDateTime(), top.toInt()).map { songs ->
+                database.mostPlayedSongs(
+                    fromTimeStamp = period.toLocalDateTime(),
+                    limit = top.toInt(),
+                    offset = 0,
+                    toTimeStamp = LocalDateTime.now()
+                ).map { songs ->
                     if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
                 }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
