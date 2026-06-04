@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.utils.BULLET_SEPARATOR
+
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
@@ -927,7 +929,7 @@ private fun AutoPlaylistHeader(
                 buildString {
                     append(pluralStringResource(R.plurals.n_song, songs.size, songs.size))
                     if (likeLength > 0) {
-                        append(" | ")
+                        append(BULLET_SEPARATOR)
                         append(makeTimeString(likeLength * 1000L))
                     }
                 },

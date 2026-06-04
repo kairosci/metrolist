@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.utils.BULLET_SEPARATOR
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -586,7 +588,7 @@ fun DailyDiscoverCard(
                                 buildString {
                                     append((dailyDiscover.recommendation as? SongItem)?.artists?.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name } ?: "")
                                     if (playCount > 0) {
-                                        append(" | $playCount $playsString")
+                                        append("$BULLET_SEPARATOR$playCount $playsString")
                                     }
                                 },
                             style = MaterialTheme.typography.bodyMedium,

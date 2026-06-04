@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.utils.BULLET_SEPARATOR
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -273,7 +275,7 @@ fun AlbumScreen(
                                         ),
                                     )
                                     if (totalDuration > 0) {
-                                        append(" | ")
+                                        append(BULLET_SEPARATOR)
                                         append(makeTimeString(totalDuration * 1000L))
                                     }
                                 },

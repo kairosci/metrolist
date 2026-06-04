@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.library
 
+import com.metrolist.music.utils.BULLET_SEPARATOR
+
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -549,7 +551,7 @@ private fun AutoPlaylistCard(
                     buildString {
                         append(stringResource(R.string.auto_playlist))
                         if (!episodeCount.isNullOrBlank()) {
-                            append(" | ")
+                            append(BULLET_SEPARATOR)
                             append(episodeCount)
                         }
                     },

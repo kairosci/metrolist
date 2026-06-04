@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.utils.BULLET_SEPARATOR
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -586,7 +588,7 @@ private fun OnlinePlaylistHeader(
         val metadataText = buildString {
             append(nSongs)
             if (durationText != null) {
-                append(" | ")
+                append(BULLET_SEPARATOR)
                 append(durationText)
             }
         }

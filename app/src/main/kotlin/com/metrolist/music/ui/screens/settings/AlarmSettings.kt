@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.utils.BULLET_SEPARATOR
+
 import android.app.AlarmManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -213,7 +215,7 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
                             }
                         val description = buildString {
                             append(playlistTitle)
-                            append(" | ")
+                            append(BULLET_SEPARATOR)
                             append(if (alarm.randomSong) randomEnabledText else randomDisabledText)
                             append("\n")
                             append(stringResource(R.string.alarm_next_prefix, triggerText))

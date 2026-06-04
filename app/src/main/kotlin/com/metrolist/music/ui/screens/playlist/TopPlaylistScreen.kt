@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.utils.BULLET_SEPARATOR
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -582,7 +584,7 @@ private fun TopPlaylistHeader(
             text = buildString {
                 append(pluralStringResource(R.plurals.n_song, songs.size, songs.size))
                 if (likeLength > 0) {
-                    append(" | ")
+                    append(BULLET_SEPARATOR)
                     append(makeTimeString(likeLength * 1000L))
                 }
             },

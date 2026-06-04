@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.utils.BULLET_SEPARATOR
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -1266,7 +1268,7 @@ fun LocalPlaylistHeader(
         val metadataString = buildString {
             append(nSongs)
             if (durationText != null) {
-                append(" | ")
+                append(BULLET_SEPARATOR)
                 append(durationText)
             }
         }
