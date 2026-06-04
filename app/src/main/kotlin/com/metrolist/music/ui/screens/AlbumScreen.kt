@@ -275,7 +275,7 @@ fun AlbumScreen(
                                         ),
                                     )
                                     if (totalDuration > 0) {
-                                        append(BULLET_SEPARATOR)
+                                        append(" $BULLET_SEPARATOR ")
                                         append(makeTimeString(totalDuration * 1000L))
                                     }
                                 },

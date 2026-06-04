@@ -516,7 +516,7 @@ fun SongListItem(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "$BULLET_SEPARATOR${makeTimeString(song.song.duration * 1000L)}",
+                            text = " $BULLET_SEPARATOR ${makeTimeString(song.song.duration * 1000L)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.secondary,
                             maxLines = 1,
@@ -609,7 +609,7 @@ fun SongGridItem(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = "$BULLET_SEPARATOR${makeTimeString(song.song.duration * 1000L)}",
+                text = " $BULLET_SEPARATOR ${makeTimeString(song.song.duration * 1000L)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
@@ -762,7 +762,7 @@ fun AlbumListItem(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = "$BULLET_SEPARATOR${pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount)}${album.album.year?.let { "$BULLET_SEPARATOR$it" } ?: ""}",
+                text = " $BULLET_SEPARATOR ${pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount)}${album.album.year?.let { " $BULLET_SEPARATOR $it" } ?: ""}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
@@ -1084,7 +1084,7 @@ fun MediaMetadataListItem(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "$BULLET_SEPARATOR${makeTimeString(mediaMetadata.duration * 1000L)}",
+                    text = " $BULLET_SEPARATOR ${makeTimeString(mediaMetadata.duration * 1000L)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
@@ -1092,7 +1092,7 @@ fun MediaMetadataListItem(
                 )
                 if (mediaMetadata.suggestedBy != null) {
                     Text(
-                        text = BULLET_SEPARATOR,
+                        text = " $BULLET_SEPARATOR ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.secondary,
                         maxLines = 1,

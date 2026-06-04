@@ -215,7 +215,7 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
                             }
                         val description = buildString {
                             append(playlistTitle)
-                            append(BULLET_SEPARATOR)
+                            append(" $BULLET_SEPARATOR ")
                             append(if (alarm.randomSong) randomEnabledText else randomDisabledText)
                             append("\n")
                             append(stringResource(R.string.alarm_next_prefix, triggerText))

@@ -1268,7 +1268,7 @@ fun LocalPlaylistHeader(
         val metadataString = buildString {
             append(nSongs)
             if (durationText != null) {
-                append(BULLET_SEPARATOR)
+                append(" $BULLET_SEPARATOR ")
                 append(durationText)
             }
         }

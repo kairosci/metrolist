@@ -5,7 +5,7 @@
 
 package com.metrolist.music.utils
 
-const val BULLET_SEPARATOR = " · "
+const val BULLET_SEPARATOR = "·"
 
 fun makeTimeString(duration: Long?): String {
     if (duration == null || duration < 0) return ""
@@ -27,4 +27,4 @@ fun joinByBullet(vararg str: String?) =
     str
         .filterNot {
             it.isNullOrEmpty()
-        }.joinToString(separator = BULLET_SEPARATOR)
+        }.joinToString(separator = " $BULLET_SEPARATOR ")
