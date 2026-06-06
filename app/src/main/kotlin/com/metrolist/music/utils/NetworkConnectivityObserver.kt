@@ -67,11 +67,8 @@ class NetworkConnectivityObserver(context: Context) {
             // Check if we have internet capability
             val hasInternet = networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
             
-            // For API 23+, also check if connection is validated
-            val isValidated =
-                networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
-
-            hasInternet && isValidated
+            // Return just hasInternet as NET_CAPABILITY_VALIDATED is flaky on Android 14
+            hasInternet
         } catch (e: Exception) {
             false
         }
