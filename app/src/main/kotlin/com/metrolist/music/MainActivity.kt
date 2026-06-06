@@ -660,13 +660,14 @@ class MainActivity : ComponentActivity() {
         ) {
             val currentDensity = LocalDensity.current
             val windowInfo = LocalWindowInfo.current
-            val containerWidthDp = windowInfo.containerDpSize.width
+            val containerSize = windowInfo.containerDpSize
+            val smallestDimensionDp = minOf(containerSize.width, containerSize.height)
 
-            val densityScale = remember(containerWidthDp) {
+            val densityScale = remember(smallestDimensionDp) {
                 when {
-                    containerWidthDp >= 840.dp -> 1.25f
-                    containerWidthDp >= 720.dp -> 1.15f
-                    containerWidthDp >= 600.dp -> 1.1f
+                    smallestDimensionDp >= 840.dp -> 1.25f
+                    smallestDimensionDp >= 720.dp -> 1.15f
+                    smallestDimensionDp >= 600.dp -> 1.1f
                     else -> 1.0f
                 }
             }
