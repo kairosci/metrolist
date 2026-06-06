@@ -825,16 +825,14 @@ class MusicService :
                     .first() == null
             ) {
                 val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
-                if (lyricsWithProvider.lyrics != com.metrolist.music.db.entities.LyricsEntity.LYRICS_NOT_FOUND) {
-                    database.query {
-                        upsert(
-                            LyricsEntity(
-                                id = mediaMetadata.id,
-                                lyrics = lyricsWithProvider.lyrics,
-                                provider = lyricsWithProvider.provider,
-                            ),
-                        )
-                    }
+                database.query {
+                    upsert(
+                        LyricsEntity(
+                            id = mediaMetadata.id,
+                            lyrics = lyricsWithProvider.lyrics,
+                            provider = lyricsWithProvider.provider,
+                        ),
+                    )
                 }
             }
         }

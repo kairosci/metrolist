@@ -99,9 +99,7 @@ constructor(
                 runBlocking {
                     lyricsHelper.getLyrics(mediaMetadata)
                 }
-            if (lyricsWithProvider.lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
-            }
+            upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
         }
     }
 }
