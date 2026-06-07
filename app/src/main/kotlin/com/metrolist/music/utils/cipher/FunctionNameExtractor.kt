@@ -89,7 +89,36 @@ object FunctionNameExtractor {
             nArrayIndex = null,
             nConstantArgs = null,
             signatureTimestamp = 20591
+        ),
+        // June 2026: direct URLs, n-transform via _yt_player.W_ URL parser (AVj wrapper)
+        "4f38b487" to HardcodedPlayerConfig(
+            sigFuncName = "",
+            sigConstantArg = null,
+            sigConstantArgs = null,
+            sigPreprocessFunc = null,
+            sigPreprocessArgs = null,
+            nFuncName = "__URL_PARSER__",
+            nArrayIndex = null,
+            nConstantArgs = null,
+            signatureTimestamp = 20602
+        ),
+        // June 2026 RC: same URL-parser n-transform, class renamed to g.uY (bIR wrapper)
+        "9d2ef9ef" to HardcodedPlayerConfig(
+            sigFuncName = "",
+            sigConstantArg = null,
+            sigConstantArgs = null,
+            sigPreprocessFunc = null,
+            sigPreprocessArgs = null,
+            nFuncName = "__URL_PARSER__",
+            nArrayIndex = null,
+            nConstantArgs = null,
+            signatureTimestamp = 20607
         )
+    )
+
+    // Players that rewrite n= via (new g.uY(url,true)).get("n") or (new g.W_(url,true)).get("n")
+    private val URL_PARSER_N_TRANSFORM_PATTERN = Regex(
+        """\(new\s+g\.(?:uY|W_)\([^,]+,!0\)\)\.get\("n"\)"""
     )
 
     // ==================== DETECTION PATTERNS ====================
@@ -130,6 +159,8 @@ object FunctionNameExtractor {
         Regex("""\(\s*([a-zA-Z0-9$]+)\s*=\s*String\.fromCharCode\(110\)"""),
         // Pattern 5: enhanced_except_ function pattern
         Regex("""([a-zA-Z0-9$]+)\s*=\s*function\([a-zA-Z0-9]\)\s*\{[^}]*?enhanced_except_"""),
+        // Pattern 6: AVj-style URL parser (June 2026+): FUNC=function(x){try{var y=(new g.W_(x,!0)).get("n")
+        Regex("""([a-zA-Z0-9$]+)=function\([a-zA-Z0-9$]+\)\{try\{var\s+[a-zA-Z0-9$]+=\(new\s+[a-zA-Z0-9$.]+\.W_\([a-zA-Z0-9$]+,!0\)\)\.get\("n"\)"""),
     )
 
     // ==================== EXTRACTION FUNCTIONS ====================
@@ -224,27 +255,22 @@ object FunctionNameExtractor {
             }
         }
 
-        Timber.tag(TAG).w("No sig pattern matched, checking for Q-array obfuscation...")
+        Timber.tag(TAG).w("No sig pattern matched, trying hardcoded config...")
 
-        // Check for Q-array obfuscation and use hardcoded fallback
-        if (hasQArrayObfuscation(playerJs)) {
-            // Use knownHash if provided, otherwise try to extract
-            val hashToUse = knownHash ?: extractPlayerHash(playerJs)
-            Timber.tag(TAG).d("Using hash for hardcoded lookup: $hashToUse (knownHash=$knownHash)")
-            if (hashToUse != null) {
-                val config = getHardcodedConfig(hashToUse)
-                if (config != null) {
-                    Timber.tag(TAG).d("USING HARDCODED SIG FUNCTION: ${config.sigFuncName}(${config.sigConstantArgs}, ...)")
-                    Timber.tag(TAG).d("Sig preprocess: ${config.sigPreprocessFunc}(${config.sigPreprocessArgs}, sig)")
-                    return SigFunctionInfo(
-                        name = config.sigFuncName,
-                        constantArg = config.sigConstantArg,
-                        constantArgs = config.sigConstantArgs,
-                        preprocessFunc = config.sigPreprocessFunc,
-                        preprocessArgs = config.sigPreprocessArgs,
-                        isHardcoded = true
-                    )
-                }
+        val hashToUse = knownHash ?: if (hasQArrayObfuscation(playerJs)) extractPlayerHash(playerJs) else null
+        if (hashToUse != null) {
+            val config = getHardcodedConfig(hashToUse)
+            if (config != null && config.sigFuncName.isNotEmpty()) {
+                Timber.tag(TAG).d("USING HARDCODED SIG FUNCTION: ${config.sigFuncName}(${config.sigConstantArgs}, ...)")
+                Timber.tag(TAG).d("Sig preprocess: ${config.sigPreprocessFunc}(${config.sigPreprocessArgs}, sig)")
+                return SigFunctionInfo(
+                    name = config.sigFuncName,
+                    constantArg = config.sigConstantArg,
+                    constantArgs = config.sigConstantArgs,
+                    preprocessFunc = config.sigPreprocessFunc,
+                    preprocessArgs = config.sigPreprocessArgs,
+                    isHardcoded = true
+                )
             }
         }
 
@@ -301,21 +327,21 @@ object FunctionNameExtractor {
             }
         }
 
-        Timber.tag(TAG).w("No n-func pattern matched, checking for Q-array obfuscation...")
+        Timber.tag(TAG).w("No n-func pattern matched, trying hardcoded config...")
 
-        // Check for Q-array obfuscation and use hardcoded fallback
-        if (hasQArrayObfuscation(playerJs)) {
-            // Use knownHash if provided, otherwise try to extract
-            val hashToUse = knownHash ?: extractPlayerHash(playerJs)
-            Timber.tag(TAG).d("Using hash for hardcoded lookup: $hashToUse (knownHash=$knownHash)")
-            if (hashToUse != null) {
-                val config = getHardcodedConfig(hashToUse)
-                if (config != null) {
-                    Timber.tag(TAG).d("USING HARDCODED N-FUNCTION: ${config.nFuncName}[${config.nArrayIndex}]")
-                    Timber.tag(TAG).d("N-function constant args: ${config.nConstantArgs}")
-                    return NFunctionInfo(config.nFuncName, config.nArrayIndex, config.nConstantArgs, isHardcoded = true)
-                }
+        val hashToUse = knownHash ?: if (hasQArrayObfuscation(playerJs)) extractPlayerHash(playerJs) else null
+        if (hashToUse != null) {
+            val config = getHardcodedConfig(hashToUse)
+            if (config != null && config.nFuncName.isNotEmpty()) {
+                Timber.tag(TAG).d("USING HARDCODED N-FUNCTION: ${config.nFuncName}[${config.nArrayIndex}]")
+                Timber.tag(TAG).d("N-function constant args: ${config.nConstantArgs}")
+                return NFunctionInfo(config.nFuncName, config.nArrayIndex, config.nConstantArgs, isHardcoded = true)
             }
+        }
+
+        if (URL_PARSER_N_TRANSFORM_PATTERN.containsMatchIn(playerJs)) {
+            Timber.tag(TAG).d("USING URL-PARSER N-TRANSFORM (detected g.uY/g.W_ in player.js)")
+            return NFunctionInfo("__URL_PARSER__", null, null, isHardcoded = true)
         }
 
         Timber.tag(TAG).e("========== N-FUNCTION EXTRACTION FAILED ==========")

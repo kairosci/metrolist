@@ -103,7 +103,7 @@ class CipherWebView private constructor(
         usingHardcodedMode = isHardcoded
 
         val exports = buildList {
-            if (sigFuncName != null) {
+            if (!sigFuncName.isNullOrEmpty()) {
                 val sigConstArgs = sigInfo.constantArgs
                 val preprocessFunc = sigInfo.preprocessFunc
                 val preprocessArgs = sigInfo.preprocessArgs
@@ -130,7 +130,21 @@ class CipherWebView private constructor(
             }
             if (nFuncName != null) {
                 val nConstArgs = nFuncInfo.constantArgs
-                if (!nConstArgs.isNullOrEmpty()) {
+                if (nFuncName == "__URL_PARSER__") {
+                    // June 2026+: n-transform via URL parser (W_ on 4f38b487, uY on 9d2ef9ef+)
+                    Timber.tag(TAG).d("N-function uses URL parser mode (_yt_player.uY / W_)")
+                    add("""window._nTransformFunc = function(n) {
+                        try {
+                            var url = 'https://rr1.c.youtube.com/videoplayback?n=' + encodeURIComponent(n);
+                            var Parser = (typeof _yt_player.uY === 'function') ? _yt_player.uY
+                                : (typeof _yt_player.W_ === 'function' ? _yt_player.W_ : null);
+                            if (!Parser) return n;
+                            var parsed = new Parser(url, true);
+                            var result = parsed.get('n');
+                            return (result && typeof result === 'string' && result !== n) ? result : n;
+                        } catch(e) { return n; }
+                    };""".trimIndent().replace("\n", " "))
+                } else if (!nConstArgs.isNullOrEmpty()) {
                     // Generate wrapper function for n-functions that require constant args
                     // e.g. GU(6, 6010, n) -> window._nTransformFunc = function(n) { return GU(6, 6010, n); };
                     val argsStr = nConstArgs.joinToString(", ")
