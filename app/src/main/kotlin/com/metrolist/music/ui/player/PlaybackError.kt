@@ -63,7 +63,7 @@ fun PlaybackError(
     val errorMessage = if (isAgeRestricted) {
         "This app does not support playing age-restricted songs. We are working on fixing this issue."
     } else if (isJobCancelled) {
-        "The video is not available for playback. Try again or skip to the next song."
+        stringResource(R.string.error_job_cancelled)
     } else {
         rawErrorMessage
     }
