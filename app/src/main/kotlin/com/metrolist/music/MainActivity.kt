@@ -685,12 +685,12 @@ class MainActivity : ComponentActivity() {
             }
 
             CompositionLocalProvider(LocalDensity provides scaledDensity) {
-                BoxWithConstraints(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface),
-                ) {
+            BoxWithConstraints(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface),
+            ) {
                 val density = LocalDensity.current
                 val configuration = LocalWindowInfo.current
                 val cutoutInsets = WindowInsets.displayCutout
