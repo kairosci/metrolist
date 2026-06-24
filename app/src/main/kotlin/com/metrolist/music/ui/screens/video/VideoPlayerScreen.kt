@@ -20,11 +20,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -68,6 +71,7 @@ fun VideoPlayerScreen(
 
     var isControlsVisible by rememberSaveable { mutableStateOf(true) }
 
+    // Auto-hide controls after 3.5s when playing
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
             delay(3500)
@@ -75,10 +79,12 @@ fun VideoPlayerScreen(
         }
     }
 
+    // Start playback when screen opens
     LaunchedEffect(videoId) {
         connection.playVideo(VideoMetadata(videoId = videoId, title = ""))
     }
 
+    // Full black background — completely separate from the music player UI
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -89,7 +95,9 @@ fun VideoPlayerScreen(
             ) {
                 isControlsVisible = !isControlsVisible
             },
+        contentAlignment = Alignment.Center,
     ) {
+        // ── Video surface ── always 16:9, centered in the black frame
         AndroidView(
             factory = { ctx ->
                 SurfaceView(ctx).also { surfaceView ->
@@ -105,129 +113,157 @@ fun VideoPlayerScreen(
                 .aspectRatio(16f / 9f),
         )
 
+        // ── Buffering spinner ──
+        if (playbackState == Player.STATE_BUFFERING) {
+            CircularProgressIndicator(
+                color = Color.White,
+                modifier = Modifier.size(48.dp),
+            )
+        }
+
+        // ── Overlay controls ──
         AnimatedVisibility(
             visible = isControlsVisible,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize(),
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0x80000000)),
-                ) {
-                    Spacer(modifier = Modifier.statusBarsPadding())
+            VideoControlsOverlay(
+                currentVideo = currentVideo,
+                isPlaying = isPlaying,
+                connection = connection,
+                onNavigateBack = onNavigateBack,
+            )
+        }
+    }
+}
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = onNavigateBack) {
-                            androidx.compose.material3.Icon(
-                                painter = painterResource(R.drawable.arrow_back),
-                                contentDescription = "Back",
-                                tint = Color.White,
-                            )
-                        }
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = currentVideo?.title ?: "",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
-                                maxLines = 1,
-                            )
-                            Text(
-                                text = currentVideo?.author ?: "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.7f),
-                                maxLines = 1,
-                            )
-                        }
+@Composable
+private fun VideoControlsOverlay(
+    currentVideo: VideoMetadata?,
+    isPlaying: Boolean,
+    connection: VideoPlayerConnection,
+    onNavigateBack: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0x80000000)),
+    ) {
+        // ── Top bar: back + title ──
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onNavigateBack) {
+                    androidx.compose.material3.Icon(
+                        painter = painterResource(R.drawable.arrow_back),
+                        contentDescription = "Back",
+                        tint = Color.White,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = currentVideo?.title ?: "",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        maxLines = 1,
+                    )
+                    val authorText = currentVideo?.author
+                    if (!authorText.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = authorText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.7f),
+                            maxLines = 1,
+                        )
                     }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = { connection.skipPrevious() }) {
-                            androidx.compose.material3.Icon(
-                                painter = painterResource(R.drawable.skip_previous),
-                                contentDescription = "Previous",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        }
-
-                        IconButton(onClick = {
-                            connection.seekTo(connection.getPlayer().currentPosition - 10000)
-                        }) {
-                            androidx.compose.material3.Icon(
-                                painter = painterResource(R.drawable.replay),
-                                contentDescription = "Rewind 10s",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { connection.togglePlayPause() },
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f)),
-                        ) {
-                            androidx.compose.material3.Icon(
-                                painter = painterResource(
-                                    if (isPlaying) R.drawable.pause else R.drawable.play,
-                                ),
-                                contentDescription = if (isPlaying) "Pause" else "Play",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        }
-
-                        IconButton(onClick = {
-                            connection.seekTo(connection.getPlayer().currentPosition + 10000)
-                        }) {
-                            androidx.compose.material3.Icon(
-                                painter = painterResource(R.drawable.fast_forward),
-                                contentDescription = "Forward 10s",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        }
-
-                        IconButton(onClick = { connection.skipNext() }) {
-                            androidx.compose.material3.Icon(
-                                painter = painterResource(R.drawable.skip_next),
-                                contentDescription = "Next",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        }
-                    }
-
-                    VideoSeekBar(connection = connection)
-
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
 
-        if (playbackState == Player.STATE_BUFFERING) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(color = Color.White)
+        // ── Center playback controls ──
+        Row(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = { connection.skipPrevious() }) {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(R.drawable.skip_previous),
+                    contentDescription = "Previous",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp),
+                )
             }
+
+            IconButton(onClick = {
+                connection.seekTo(connection.getPlayer().currentPosition - 10_000L)
+            }) {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(R.drawable.replay),
+                    contentDescription = "Rewind 10s",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
+
+            // Main play/pause button — larger, with circle background
+            IconButton(
+                onClick = { connection.togglePlayPause() },
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.25f)),
+            ) {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(
+                        if (isPlaying) R.drawable.pause else R.drawable.play,
+                    ),
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(48.dp),
+                )
+            }
+
+            IconButton(onClick = {
+                connection.seekTo(connection.getPlayer().currentPosition + 10_000L)
+            }) {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(R.drawable.fast_forward),
+                    contentDescription = "Forward 10s",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
+
+            IconButton(onClick = { connection.skipNext() }) {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(R.drawable.skip_next),
+                    contentDescription = "Next",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
+        }
+
+        // ── Bottom seek bar ──
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .systemBarsPadding()
+                .padding(bottom = 8.dp),
+        ) {
+            VideoSeekBar(connection = connection)
         }
     }
 }
@@ -266,7 +302,7 @@ private fun VideoSeekBar(connection: VideoPlayerConnection) {
                 isSeeking = false
             },
             modifier = Modifier.fillMaxWidth(),
-            colors = androidx.compose.material3.SliderDefaults.colors(
+            colors = SliderDefaults.colors(
                 thumbColor = Color.White,
                 activeTrackColor = Color.White,
                 inactiveTrackColor = Color.White.copy(alpha = 0.3f),
