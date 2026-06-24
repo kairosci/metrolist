@@ -37,6 +37,10 @@ import com.metrolist.music.ui.screens.playlist.CachePlaylistScreen
 import com.metrolist.music.ui.screens.playlist.LocalPlaylistScreen
 import com.metrolist.music.ui.screens.playlist.OnlinePlaylistScreen
 import com.metrolist.music.ui.screens.playlist.TopPlaylistScreen
+import com.metrolist.music.ui.screens.video.VideoHomeScreen
+import com.metrolist.music.ui.screens.video.VideoPlayerScreen
+import com.metrolist.music.ui.screens.video.VideoSearchScreen
+import com.metrolist.music.ui.screens.video.VideoScreens
 import com.metrolist.music.ui.screens.podcast.OnlinePodcastScreen
 import com.metrolist.music.ui.screens.recognition.RecognitionHistoryScreen
 import com.metrolist.music.ui.screens.recognition.RecognitionScreen
@@ -102,6 +106,45 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(Screens.ListenTogether.route) {
         ListenTogetherScreen(navController, showTopBar = false)
+    }
+
+    composable(Screens.Videos.route) {
+        VideoHomeScreen(
+            onNavigateToPlayer = { videoId ->
+                navController.navigate(VideoScreens.Player.createRoute(videoId))
+            }
+        )
+    }
+
+    composable(VideoScreens.Home.route) {
+        VideoHomeScreen(
+            onNavigateToPlayer = { videoId ->
+                navController.navigate(VideoScreens.Player.createRoute(videoId))
+            }
+        )
+    }
+
+    composable(VideoScreens.Search.route) {
+        VideoSearchScreen(
+            onNavigateToPlayer = { videoId ->
+                navController.navigate(VideoScreens.Player.createRoute(videoId))
+            }
+        )
+    }
+
+    composable(
+        route = VideoScreens.Player.route,
+        arguments = listOf(
+            navArgument("videoId") {
+                type = NavType.StringType
+            }
+        ),
+    ) { backStackEntry ->
+        val videoId = backStackEntry.arguments?.getString("videoId") ?: return@composable
+        VideoPlayerScreen(
+            videoId = videoId,
+            onNavigateBack = { navController.popBackStack() },
+        )
     }
 
     composable(

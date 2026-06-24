@@ -245,6 +245,16 @@
         </service>
 
         <service
+            android:name=".playback.video.VideoPlayerService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
+        <service
             android:name=".playback.ExoDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync">

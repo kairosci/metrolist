@@ -1,8 +1,3 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
 package com.metrolist.music.ui.screens
 
 import androidx.annotation.DrawableRes
@@ -31,6 +26,13 @@ sealed class Screens(
         route = "search_input"
     )
 
+    object Videos : Screens(
+        titleId = R.string.videos,
+        iconIdInactive = R.drawable.videocam_outlined,
+        iconIdActive = R.drawable.videocam_filled,
+        route = "videos"
+    )
+
     object ListenTogether : Screens(
         titleId = R.string.together,
         iconIdInactive = R.drawable.group_outlined,
@@ -46,6 +48,6 @@ sealed class Screens(
     )
 
     companion object {
-        val MainScreens = listOf(Home, Search, ListenTogether, Library)
+        val MainScreens = listOf(Home, Search, Videos, ListenTogether, Library)
     }
 }

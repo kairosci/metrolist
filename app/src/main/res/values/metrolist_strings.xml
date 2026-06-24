@@ -1015,4 +1015,15 @@
     <string name="stream_source_web_creator_desc">Creator web client.</string>
     <string name="stream_source_android_creator">ANDROID_CREATOR</string>
     <string name="stream_source_android_creator_desc">Android creator client. Off by default; needs DroidGuard.</string>
+
+    <!-- Video mode -->
+    <string name="videos">Videos</string>
+    <string name="video">Video</string>
+    <string name="video_home">Video Home</string>
+    <string name="video_search">Search Videos</string>
+    <string name="video_player">Video Player</string>
+    <string name="video_queue">Video Queue</string>
+    <string name="no_videos_found">No videos found</string>
+    <string name="search_videos_hint">Search videos…</string>
+    <string name="video_player_back">Back to Videos</string>
 </resources>
