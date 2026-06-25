@@ -153,7 +153,8 @@ class SyncUtils @Inject constructor(
             }
 
         syncScope.launch {
-            cachedLastSyncEpoch = context.dataStore.get(LastFullSyncKey, 0L)
+            val loaded = context.dataStore.get(LastFullSyncKey, 0L)
+            cachedLastSyncEpoch = maxOf(cachedLastSyncEpoch, loaded)
         }
 
         startProcessingQueue()

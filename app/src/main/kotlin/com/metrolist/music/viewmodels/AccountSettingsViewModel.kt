@@ -84,13 +84,17 @@ class AccountSettingsViewModel @Inject constructor(
         accountChannelHandle: String,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            context.safeDataStoreEdit { settings ->
+            val saved = context.safeDataStoreEdit { settings ->
                 settings[InnerTubeCookieKey] = cookie
                 settings[VisitorDataKey] = visitorData
                 settings[DataSyncIdKey] = dataSyncId
                 settings[AccountNameKey] = accountName
                 settings[AccountEmailKey] = accountEmail
                 settings[AccountChannelHandleKey] = accountChannelHandle
+            }
+            if (!saved) {
+                Timber.e("saveTokenAndRestart: DataStore write failed — skipping restart to avoid losing credentials")
+                return@launch
             }
             withContext(Dispatchers.Main) {
                 val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)

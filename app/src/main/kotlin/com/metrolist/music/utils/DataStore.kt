@@ -29,7 +29,7 @@ import timber.log.Timber
 import java.io.File
 import java.io.IOException
 
-private var dataStoreInstance: DataStore<Preferences>? = null
+@Volatile private var dataStoreInstance: DataStore<Preferences>? = null
 private val dataStoreLock = Any()
 
 val Context.dataStore: DataStore<Preferences>
@@ -51,16 +51,19 @@ val Context.dataStore: DataStore<Preferences>
 /**
  * Safe DataStore write that ensures the parent directory exists before every edit.
  * Catches and reports IOException instead of crashing the coroutine scope.
+ * Returns true if the write succeeded, false if it failed.
  */
 suspend fun Context.safeDataStoreEdit(
     transform: suspend (MutablePreferences) -> Unit,
-) {
-    try {
+): Boolean {
+    return try {
         File(filesDir, "datastore").mkdirs()
         dataStore.edit(transform)
+        true
     } catch (e: IOException) {
         Timber.e(e, "DataStore edit failed")
         reportException(e)
+        false
     }
 }
 
