@@ -26,6 +26,7 @@ import android.media.AudioManager
 import android.media.audiofx.AudioEffect
 import com.metrolist.music.playback.audio.VolumeNormalizationAudioProcessor
 import com.metrolist.music.utils.safeDataStoreEdit
+import java.util.concurrent.ConcurrentHashMap
 import android.net.ConnectivityManager
 import android.os.Binder
 import android.os.Build
@@ -411,7 +412,7 @@ class MusicService :
 
     private var isAudioEffectSessionOpened = false
     private var openedAudioEffectSessionId: Int = C.AUDIO_SESSION_ID_UNSET
-    private val playerNormalizationProcessors = HashMap<Player, VolumeNormalizationAudioProcessor>()
+    private val playerNormalizationProcessors = ConcurrentHashMap<Player, VolumeNormalizationAudioProcessor>()
 
     private var loudnessSetupJob: Job? = null
     private var loudnessSetupGeneration: Long = 0L
@@ -422,7 +423,9 @@ class MusicService :
     @Volatile
     private var loudnessLevelCached: LoudnessLevel = LoudnessLevel.BALANCED
 
+    @Volatile
     private var cachedNormalizationGainMb: Int? = null
+    @Volatile
     private var cachedNormalizationEnabled: Boolean = false
 
     @Volatile private var discordRpcEnabled = false
@@ -2511,6 +2514,7 @@ class MusicService :
 
         lastPlaybackSpeed = -1.0f // force update song
 
+        applyCachedAudioNormalizationNow()
         setupAudioNormalization()
 
         scrobbleManager?.onSongStop()
