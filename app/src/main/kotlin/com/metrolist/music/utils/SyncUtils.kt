@@ -1412,9 +1412,10 @@ class SyncUtils @Inject constructor(
                     val remotePlaylists = page.items.filterIsInstance<PlaylistItem>()
                         .filterNot { it.id == "LM" || it.id == "SE" }
                         .reversed()
+                        .distinctBy { it.id }
                     val remoteIds = remotePlaylists.map { it.id }.toSet()
 
-                    val localPlaylists = database.playlistEntitiesByNameAsc()
+                    val localPlaylists = database.playlistEntitiesByNameAsc().toMutableList()
                     localPlaylists.filterNot { it.browseId in remoteIds }
                         .filterNot { it.browseId == null }
                         .forEach { playlist ->
@@ -1445,6 +1446,7 @@ class SyncUtils @Inject constructor(
                                     radioEndpointParams = playlist.radioEndpoint?.params
                                 )
                                 database.insert(playlistEntity)
+                                localPlaylists.add(playlistEntity)
                                 Timber.d("syncSavedPlaylists: Created new playlist ${playlist.title} (${playlist.id})")
                             } else {
                                 database.update(playlistEntity, playlist)
@@ -1464,6 +1466,7 @@ class SyncUtils @Inject constructor(
                     }
 
                     updateState { copy(playlists = SyncStatus.Completed) }
+                    executeCleanupDuplicatePlaylists()
                     Timber.d("Synced ${remotePlaylists.size} saved playlists")
                 } catch (e: Exception) {
                     Timber.e(e, "Error processing saved playlists")
