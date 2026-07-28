@@ -185,7 +185,7 @@ fun LazyGridScope.SleepTimerGridMenu(
                 }
             )
             Text(
-                text = if (enabled) makeTimeString(sleepTimerTimeLeft) else stringResource(
+                text = if (enabled) "${stringResource(id = R.string.sleep_timer)}\n${makeTimeString(sleepTimerTimeLeft)}" else stringResource(
                     id = R.string.sleep_timer
                 ),
                 style = MaterialTheme.typography.labelLarge,
