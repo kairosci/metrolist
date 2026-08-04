@@ -19,6 +19,8 @@ import com.metrolist.lastfm.LastFM
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.LastFMUseSendLikes
 import com.metrolist.music.constants.LastFullSyncKey
+import com.metrolist.music.constants.PendingLikedSongIdsKey
+import com.metrolist.music.constants.PendingUnlikedSongIdsKey
 import com.metrolist.music.constants.SYNC_COOLDOWN
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ArtistEntity
@@ -100,6 +102,54 @@ data class SyncState(
     val playlists: SyncStatus = SyncStatus.Idle,
     val currentOperation: String = ""
 )
+
+data class LikedSongReconciliationPlan(
+    val likeIds: List<String>,
+    val unlikeIds: List<String>,
+    val clearPendingLikes: List<String>,
+    val clearPendingUnlikes: List<String>,
+)
+
+/**
+ * Only songs with an explicit pending intent are pushed, so a deliberate
+ * remote unlike is never re-applied by the next sync.
+ */
+fun reconcilePendingLikedSongs(
+    pendingLikedIds: Set<String>,
+    pendingUnlikedIds: Set<String>,
+    localLikedSongs: Map<String, Boolean>,
+    remoteIds: Set<String>,
+): LikedSongReconciliationPlan {
+    val likeIds = mutableListOf<String>()
+    val unlikeIds = mutableListOf<String>()
+    val clearPendingLikes = mutableListOf<String>()
+    val clearPendingUnlikes = mutableListOf<String>()
+
+    for (id in pendingLikedIds) {
+        val localIsLocal = localLikedSongs[id]
+        when {
+            localIsLocal == null -> clearPendingLikes.add(id)
+            id in remoteIds -> clearPendingLikes.add(id)
+            localIsLocal -> clearPendingLikes.add(id)
+            else -> likeIds.add(id)
+        }
+    }
+
+    for (id in pendingUnlikedIds) {
+        when {
+            localLikedSongs.containsKey(id) -> clearPendingUnlikes.add(id)
+            id in remoteIds -> unlikeIds.add(id)
+            else -> clearPendingUnlikes.add(id)
+        }
+    }
+
+    return LikedSongReconciliationPlan(
+        likeIds = likeIds,
+        unlikeIds = unlikeIds,
+        clearPendingLikes = clearPendingLikes,
+        clearPendingUnlikes = clearPendingUnlikes,
+    )
+}
 
 @Singleton
 class SyncUtils @Inject constructor(
@@ -364,7 +414,22 @@ class SyncUtils @Inject constructor(
     }
 
     fun likeSong(s: SongEntity) {
-        enqueue(SyncOperation.LikeSong(s))
+        syncScope.launch {
+            context.safeDataStoreEdit { prefs ->
+                val pendingLiked = prefs[PendingLikedSongIdsKey].orEmpty().toMutableSet()
+                val pendingUnliked = prefs[PendingUnlikedSongIdsKey].orEmpty().toMutableSet()
+                if (s.liked) {
+                    pendingLiked.add(s.id)
+                    pendingUnliked.remove(s.id)
+                } else {
+                    pendingUnliked.add(s.id)
+                    pendingLiked.remove(s.id)
+                }
+                prefs[PendingLikedSongIdsKey] = pendingLiked
+                prefs[PendingUnlikedSongIdsKey] = pendingUnliked
+            }
+            enqueue(SyncOperation.LikeSong(s))
+        }
     }
 
     fun subscribeChannel(channelId: String, subscribe: Boolean) {
@@ -640,7 +705,12 @@ class SyncUtils @Inject constructor(
         }
 
         withRetry {
-            YouTube.likeVideo(s.id, s.liked)
+            YouTube.likeVideo(s.id, s.liked).getOrThrow()
+        }.onSuccess {
+            context.safeDataStoreEdit { prefs ->
+                val key = if (s.liked) PendingLikedSongIdsKey else PendingUnlikedSongIdsKey
+                prefs[key] = prefs[key].orEmpty() - s.id
+            }
         }.onFailure { e ->
             Timber.e(e, "Failed to like song on YouTube: ${s.id}")
         }
@@ -733,24 +803,69 @@ class SyncUtils @Inject constructor(
                     val remoteSongs = page.songs
                     val remoteIds = remoteSongs.map { it.id }.toSet()
                     val localLikedSongs = database.likedSongEntitiesByNameAsc()
+                    val localLikedById = localLikedSongs.associate { it.id to it.isLocal }
 
-                    // Push local liked songs that aren't on YouTube (and aren't local files) up to the remote liked list
-                    localLikedSongs.filterNot { it.id in remoteIds || it.isLocal }.forEach { song ->
+                    val pendingLikedIds = context.dataStore.data
+                        .map { it[PendingLikedSongIdsKey] ?: emptySet() }
+                        .first()
+                    val pendingUnlikedIds = context.dataStore.data
+                        .map { it[PendingUnlikedSongIdsKey] ?: emptySet() }
+                        .first()
+
+                    val plan = reconcilePendingLikedSongs(
+                        pendingLikedIds = pendingLikedIds,
+                        pendingUnlikedIds = pendingUnlikedIds,
+                        localLikedSongs = localLikedById,
+                        remoteIds = remoteIds,
+                    )
+
+                    val pushedLikes = mutableListOf<String>()
+                    plan.likeIds.forEach { id ->
                         try {
-                            withRetry {
-                                YouTube.likeVideo(song.id, true)
-                            }.onFailure { e ->
-                                Timber.e(e, "Failed to like song on YouTube: ${song.id}")
-                            }
-                            delay(DB_OPERATION_DELAY_MS)
+                            withRetry { YouTube.likeVideo(id, true).getOrThrow() }
+                                .onSuccess { pushedLikes.add(id) }
+                                .onFailure { e ->
+                                    Timber.e(e, "Failed to push pending like on YouTube: $id")
+                                }
                         } catch (e: Exception) {
-                            Timber.e(e, "Failed to push local liked song: ${song.id}")
+                            Timber.e(e, "Failed to push pending like: $id")
+                        }
+                        delay(DB_OPERATION_DELAY_MS)
+                    }
+
+                    val pushedUnlikes = mutableListOf<String>()
+                    plan.unlikeIds.forEach { id ->
+                        try {
+                            withRetry { YouTube.likeVideo(id, false).getOrThrow() }
+                                .onSuccess { pushedUnlikes.add(id) }
+                                .onFailure { e ->
+                                    Timber.e(e, "Failed to push pending unlike on YouTube: $id")
+                                }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to push pending unlike: $id")
+                        }
+                        delay(DB_OPERATION_DELAY_MS)
+                    }
+
+                    val clearLikes = (plan.clearPendingLikes + pushedLikes).toSet()
+                    val clearUnlikes = (plan.clearPendingUnlikes + pushedUnlikes).toSet()
+                    if (clearLikes.isNotEmpty() || clearUnlikes.isNotEmpty()) {
+                        context.safeDataStoreEdit { prefs ->
+                            if (clearLikes.isNotEmpty()) {
+                                prefs[PendingLikedSongIdsKey] =
+                                    prefs[PendingLikedSongIdsKey].orEmpty() - clearLikes
+                            }
+                            if (clearUnlikes.isNotEmpty()) {
+                                prefs[PendingUnlikedSongIdsKey] =
+                                    prefs[PendingUnlikedSongIdsKey].orEmpty() - clearUnlikes
+                            }
                         }
                     }
 
                     val now = LocalDateTime.now()
                     remoteSongs.forEachIndexed { index, song ->
                         try {
+                            if (song.id in pendingUnlikedIds) return@forEachIndexed
                             val dbSong = database.songEntity(song.id)
                             val timestamp = now.minusSeconds(index.toLong())
                             val isVideoSong = song.isVideoSong
