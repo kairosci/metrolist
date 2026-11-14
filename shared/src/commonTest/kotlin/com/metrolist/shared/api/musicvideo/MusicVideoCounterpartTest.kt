@@ -66,6 +66,26 @@ class MusicVideoCounterpartTest {
     }
 
     @Test
+    fun identifiesPositionsInsideMappedSegments() {
+        val map =
+            CounterpartPositionMap(
+                listOf(
+                    CounterpartSegment(100, 1_000, 100),
+                    CounterpartSegment(500, 2_000, 100),
+                ),
+            )
+
+        assertEquals(false, map.containsSourcePosition(99))
+        assertEquals(true, map.containsSourcePosition(100))
+        assertEquals(true, map.containsSourcePosition(199))
+        assertEquals(false, map.containsSourcePosition(200))
+        assertEquals(false, map.containsSourcePosition(499))
+        assertEquals(true, map.containsSourcePosition(500))
+        assertEquals(true, map.containsSourcePosition(599))
+        assertEquals(false, map.containsSourcePosition(600))
+    }
+
+    @Test
     fun reversesVideoToTrackSegmentsForLyricsPlaybackOnVideoTimeline() {
         val videoToTrack = CounterpartPositionMap(listOf(CounterpartSegment(0, 4_492, 10_000)))
 

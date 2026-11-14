@@ -9,6 +9,8 @@ import com.metrolist.innertubex.InnerTube
 import com.metrolist.innertubex.extraction.AudioQuality
 import com.metrolist.innertubex.extraction.ContentHints
 import com.metrolist.shared.api.YouTubeRepository
+import com.metrolist.shared.api.musicvideo.MusicVideoCounterpart
+import com.metrolist.shared.api.musicvideo.MusicVideoResolver
 import com.metrolist.shared.api.responseDecodeDispatcher
 import com.metrolist.shared.db.MusicDatabase
 import com.metrolist.shared.listentogether.IosListenTogetherPlayback
@@ -24,6 +26,7 @@ import com.metrolist.shared.listentogether.network.RoomState
 import com.metrolist.shared.listentogether.network.SyncStatePayload
 import com.metrolist.shared.listentogether.network.TrackInfo
 import com.metrolist.shared.listentogether.toSongItem
+import com.metrolist.shared.model.MUSIC_VIDEO_TYPE_OMV
 import com.metrolist.shared.model.RepeatMode
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.settings.Settings
@@ -61,6 +64,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -1968,10 +1972,125 @@ class IosPlaybackControllerTest {
         exercisePlayback(rememberModes = true)
     }
 
+    @Test
+    fun videoModeResolvesEligibleTrackAndClearsOnTrackChange() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val database = Room.inMemoryDatabaseBuilder<MusicDatabase>().setDriver(BundledSQLiteDriver()).build()
+            val player = MusicPlayer()
+            val audioSong = song("audio-track")
+            val videoSong = song("video-track").copy(musicVideoType = MUSIC_VIDEO_TYPE_OMV)
+            val failedAudioSong = song("failed-video-track")
+            val uploadedSong = song("uploaded-track").copy(isUploaded = true)
+            val localSong = song("file:/local-track").copy(isLocal = true)
+            var resolvedVideoRequests = 0
+            var requestedVideo = false
+            var provideVideo = true
+            val failedResolution = CompletableDeferred<Unit>()
+            val videoResource =
+                PlaybackResource(
+                    videoSong.id,
+                    "https://example.test/audio",
+                    emptyMap(),
+                    null,
+                    null,
+                    requireBoundedRange = false,
+                    videoUrl = "https://example.test/video",
+                )
+            val resolver =
+                object : StreamResolver {
+                    override suspend fun resolve(
+                        videoId: String,
+                        hints: ContentHints,
+                        audioQuality: AudioQuality,
+                        sourceSong: SongItem?,
+                    ): PlaybackResource {
+                        resolvedVideoRequests++
+                        requestedVideo = hints.wantVideo
+                        if (!provideVideo) {
+                            failedResolution.complete(Unit)
+                            return videoResource.copy(videoUrl = null)
+                        }
+                        return videoResource
+                    }
+
+                    override suspend fun refresh(
+                        videoId: String,
+                        hints: ContentHints,
+                        audioQuality: AudioQuality,
+                        sourceSong: SongItem?,
+                    ) = resolve(videoId, hints, audioQuality, sourceSong)
+                }
+            try {
+                player.setQueue(listOf(audioSong, uploadedSong), 0, startPlaying = false)
+                val controller =
+                    IosPlaybackController(
+                        player,
+                        resolver,
+                        database,
+                        backgroundScope,
+                        persistenceDispatcher = StandardTestDispatcher(testScheduler),
+                        musicVideoResolver =
+                            MusicVideoResolver(
+                                counterpartLookup = {
+                                    MusicVideoCounterpart(it.id, videoSong.id, MUSIC_VIDEO_TYPE_OMV, null)
+                                },
+                            ),
+                        videoSongLookup = { id -> videoSong.takeIf { it.id == id } },
+                        videoPlaybackDispatcher = StandardTestDispatcher(testScheduler),
+                    )
+                runCurrent()
+
+                controller.setVideoMode(true)
+                runCurrent()
+                assertTrue(controller.state.value.isVideoModeActive)
+                assertFalse(controller.state.value.retimeLyricsOnVideoMode)
+
+                assertTrue(requestedVideo)
+                assertEquals(1, resolvedVideoRequests)
+                assertTrue(controller.state.value.isVideoModeActive)
+                assertEquals(videoResource, controller.state.value.videoPlaybackResource)
+                assertNull(controller.state.value.currentPlaybackResource)
+
+                player.setQueue(listOf(uploadedSong), 0, startPlaying = false)
+                runCurrent()
+                assertFalse(controller.state.value.isVideoModeActive)
+                assertNull(controller.state.value.videoPlaybackResource)
+                controller.setVideoMode(true)
+                runCurrent()
+                assertEquals(1, resolvedVideoRequests)
+                assertFalse(controller.state.value.isVideoResolving)
+
+                player.setQueue(listOf(failedAudioSong), 0, startPlaying = false)
+                runCurrent()
+                provideVideo = false
+                controller.setVideoMode(true)
+                runCurrent()
+                assertTrue(failedResolution.isCompleted)
+                assertFalse(controller.state.value.isVideoModeActive)
+                assertEquals(2, resolvedVideoRequests)
+                assertFalse(controller.state.value.isVideoResolving)
+
+                player.setQueue(listOf(localSong), 0, startPlaying = false)
+                runCurrent()
+                controller.setVideoMode(true)
+                runCurrent()
+                assertEquals(2, resolvedVideoRequests)
+                assertFalse(controller.state.value.isVideoResolving)
+            } finally {
+                backgroundScope.cancel()
+                player.release()
+                runCurrent()
+                database.close()
+            }
+        }
+
     private fun exercisePlayback(rememberModes: Boolean) =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             val settings = Settings.shared
+            val useLegacyShuffle = settings.useLegacyShuffle
+            settings.useLegacyShuffle = false
             val songs = listOf(song("first"), song("second"), song("third"), song("fourth"))
             settings.useLegacyShuffle = false
             settings.persistentQueue = true
@@ -2169,6 +2288,7 @@ class IosPlaybackControllerTest {
                 player.release()
                 runCurrent()
                 database.close()
+                settings.useLegacyShuffle = useLegacyShuffle
             }
         }
 

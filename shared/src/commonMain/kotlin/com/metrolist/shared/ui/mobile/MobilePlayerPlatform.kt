@@ -82,7 +82,7 @@ internal class MobilePlayerPlatform(
     override fun lyricsShareAction(viewModel: PlayerViewModel): ((String) -> Unit)? = shareLyrics(viewModel)
 
     override val supportsPictureInPicture = false
-    override val supportsVideoPlayback = false
+    override val supportsVideoPlayback = true
     override val supportsCasting = false
 
     @Composable
@@ -124,7 +124,7 @@ internal class MobilePlayerPlatform(
         useSurfaceView: Boolean,
         onFullscreenClick: (() -> Unit)?,
         onPiPClick: (() -> Unit)?,
-    ) = Box(modifier)
+    ) = MobileMusicVideoSurface(modifier, cornerRadius)
 
     @Composable
     override fun AnimatedCoverVideo(

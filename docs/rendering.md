@@ -44,6 +44,8 @@ Player expansion clips both content layers to the moving container. Check revers
 
 Animated artwork and lyrics run only while their content is visible. Hidden players must release frame work while keeping playback. Check resumption at the current position after backgrounding, minimizing or switching workspaces. Hyprland window handling is in [desktop rendering](desktop.md#hyprland-rendering).
 
+iOS music-video mode resolves a direct video stream and renders it in a native `AVPlayerLayer`. The existing audio player remains the audio source; video playback is muted and follows its position, including counterpart timing maps. Pausing audio pauses the video, leaving the player pauses video rendering while audio playback continues, and backgrounding the app pauses video while allowing audio playback to continue. Disabling music-video playback or changing tracks releases the video player.
+
 Desktop seek bars update their progress value once per pixel of travel, based on duration, measured width and playback speed, within 16 to 250 ms. Time labels update when the displayed second changes. WAVY and SQUIGGLY tracks keep their playing animation; lyrics have their own frame rate. Bottom-bar titles and artists scroll once per track, like the mobile mini-players; the expanded player title scrolls continuously. Each marquee frame repaints the whole window.
 
 The expressive mini-player title and artist stay on one line and show an ellipsis when space runs out, before and after their marquee pass, including with custom fonts.
@@ -51,6 +53,8 @@ The expressive mini-player title and artist stay on one line and show an ellipsi
 ## Lyrics
 
 Shared lyrics live under `shared/src/commonMain/kotlin/com/metrolist/shared/ui/components/lyrics/`. Read the selected renderer and its position/visibility inputs before changing timing. Keep song offsets, global offsets and retimed timestamps consistent with tap-to-seek diagnostics.
+
+Android counterpart video playback retimes lyrics to the video timeline. On iOS, muted counterpart playback keeps lyrics on the audio timeline; native video songs keep their own timeline and offset.
 
 Lyrics and player lyric captions disable standard font ligatures so letters such as `fi` stay separate. Background vocals, translations and romanization inherit this text style.
 

@@ -202,6 +202,7 @@ fun MetrolistIOSApp() {
                 database,
                 appScope,
                 audioStorage = downloadManager,
+                musicVideoResolver = koin.get(),
             )
         }
     IosDiscordPresenceEffect(playbackController.state, player.playbackSpeed)
