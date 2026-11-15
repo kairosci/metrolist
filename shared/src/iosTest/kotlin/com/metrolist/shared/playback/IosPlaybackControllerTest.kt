@@ -2038,12 +2038,12 @@ class IosPlaybackControllerTest {
                         musicVideoResolver =
                             MusicVideoResolver(
                                 counterpartLookup = {
-                                MusicVideoCounterpart(
-                                    it.id,
-                                    videoSong.id,
-                                    MUSIC_VIDEO_TYPE_OMV,
-                                    CounterpartPositionMap(listOf(CounterpartSegment(0L, 0L, 120_000L))).takeIf { providePositionMap },
-                                )
+                                    MusicVideoCounterpart(
+                                        it.id,
+                                        videoSong.id,
+                                        MUSIC_VIDEO_TYPE_OMV,
+                                        CounterpartPositionMap(listOf(CounterpartSegment(0L, 0L, 120_000L))).takeIf { providePositionMap },
+                                    )
                                 },
                             ),
                         videoSongLookup = { id -> videoSong.takeIf { it.id == id } },
