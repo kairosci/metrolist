@@ -2100,6 +2100,7 @@ class IosPlaybackControllerTest {
                 assertFalse(controller.state.value.isVideoModeActive)
 
                 providePositionMap = true
+                provideVideo = true
                 provideRedirectedVideoResource = true
                 player.setQueue(listOf(song("redirected-track")), 0, startPlaying = false)
                 runCurrent()
