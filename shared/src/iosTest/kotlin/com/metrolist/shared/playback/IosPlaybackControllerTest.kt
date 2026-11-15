@@ -64,7 +64,6 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -1985,6 +1984,7 @@ class IosPlaybackControllerTest {
             val localSong = song("file:/local-track").copy(isLocal = true)
             var resolvedVideoRequests = 0
             var requestedVideo = false
+            var requestedHints: ContentHints? = null
             var provideVideo = true
             val failedResolution = CompletableDeferred<Unit>()
             val videoResource =
@@ -2007,6 +2007,7 @@ class IosPlaybackControllerTest {
                     ): PlaybackResource {
                         resolvedVideoRequests++
                         requestedVideo = hints.wantVideo
+                        requestedHints = hints
                         if (!provideVideo) {
                             failedResolution.complete(Unit)
                             return videoResource.copy(videoUrl = null)
@@ -2047,6 +2048,9 @@ class IosPlaybackControllerTest {
                 assertFalse(controller.state.value.retimeLyricsOnVideoMode)
 
                 assertTrue(requestedVideo)
+                assertEquals(true, requestedHints?.allowHls)
+                assertEquals(false, requestedHints?.allowSabr)
+                assertEquals(false, requestedHints?.allowBoundedRange)
                 assertEquals(1, resolvedVideoRequests)
                 assertTrue(controller.state.value.isVideoModeActive)
                 assertEquals(videoResource, controller.state.value.videoPlaybackResource)
