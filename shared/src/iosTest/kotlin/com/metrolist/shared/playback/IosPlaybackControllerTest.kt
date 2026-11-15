@@ -1988,6 +1988,7 @@ class IosPlaybackControllerTest {
             var requestedVideo = false
             var requestedHints: ContentHints? = null
             var providePositionMap = true
+            var provideRedirectedVideoResource = false
             var provideVideo = true
             val failedResolution = CompletableDeferred<Unit>()
             val videoResource =
@@ -2015,7 +2016,7 @@ class IosPlaybackControllerTest {
                             failedResolution.complete(Unit)
                             return videoResource.copy(videoUrl = null)
                         }
-                        return videoResource
+                        return if (provideRedirectedVideoResource) videoResource.copy(musicVideoId = "redirected-video") else videoResource
                     }
 
                     override suspend fun refresh(
@@ -2096,6 +2097,15 @@ class IosPlaybackControllerTest {
                 controller.setVideoMode(true)
                 runCurrent()
                 assertEquals(2, resolvedVideoRequests)
+                assertFalse(controller.state.value.isVideoModeActive)
+
+                providePositionMap = true
+                provideRedirectedVideoResource = true
+                player.setQueue(listOf(song("redirected-track")), 0, startPlaying = false)
+                runCurrent()
+                controller.setVideoMode(true)
+                runCurrent()
+                assertEquals(3, resolvedVideoRequests)
                 assertFalse(controller.state.value.isVideoModeActive)
             } finally {
                 backgroundScope.cancel()
