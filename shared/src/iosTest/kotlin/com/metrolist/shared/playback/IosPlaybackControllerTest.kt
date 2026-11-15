@@ -9,6 +9,8 @@ import com.metrolist.innertubex.InnerTube
 import com.metrolist.innertubex.extraction.AudioQuality
 import com.metrolist.innertubex.extraction.ContentHints
 import com.metrolist.shared.api.YouTubeRepository
+import com.metrolist.shared.api.musicvideo.CounterpartPositionMap
+import com.metrolist.shared.api.musicvideo.CounterpartSegment
 import com.metrolist.shared.api.musicvideo.MusicVideoCounterpart
 import com.metrolist.shared.api.musicvideo.MusicVideoResolver
 import com.metrolist.shared.api.responseDecodeDispatcher
@@ -1985,6 +1987,7 @@ class IosPlaybackControllerTest {
             var resolvedVideoRequests = 0
             var requestedVideo = false
             var requestedHints: ContentHints? = null
+            var providePositionMap = true
             var provideVideo = true
             val failedResolution = CompletableDeferred<Unit>()
             val videoResource =
@@ -2034,7 +2037,12 @@ class IosPlaybackControllerTest {
                         musicVideoResolver =
                             MusicVideoResolver(
                                 counterpartLookup = {
-                                    MusicVideoCounterpart(it.id, videoSong.id, MUSIC_VIDEO_TYPE_OMV, null)
+                                MusicVideoCounterpart(
+                                    it.id,
+                                    videoSong.id,
+                                    MUSIC_VIDEO_TYPE_OMV,
+                                    CounterpartPositionMap(listOf(CounterpartSegment(0L, 0L, 120_000L))).takeIf { providePositionMap },
+                                )
                                 },
                             ),
                         videoSongLookup = { id -> videoSong.takeIf { it.id == id } },
@@ -2081,6 +2089,14 @@ class IosPlaybackControllerTest {
                 runCurrent()
                 assertEquals(2, resolvedVideoRequests)
                 assertFalse(controller.state.value.isVideoResolving)
+
+                providePositionMap = false
+                player.setQueue(listOf(song("unmapped-track")), 0, startPlaying = false)
+                runCurrent()
+                controller.setVideoMode(true)
+                runCurrent()
+                assertEquals(2, resolvedVideoRequests)
+                assertFalse(controller.state.value.isVideoModeActive)
             } finally {
                 backgroundScope.cancel()
                 player.release()
