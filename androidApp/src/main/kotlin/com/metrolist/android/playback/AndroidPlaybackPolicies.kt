@@ -491,6 +491,8 @@ private fun MediaItem.automotivePlaybackRequestGeneration(): Long? =
 internal data class AutomotiveSongResolution(
     val songs: List<SongItem>,
     val startIndex: Int,
+    val suppressAutoLoadMore: Boolean = false,
+    val radioSeed: SongItem? = null,
 )
 
 internal fun resolveAutomotiveSongRequest(
@@ -502,7 +504,12 @@ internal fun resolveAutomotiveSongRequest(
 ): AutomotiveSongResolution? {
     if (requestedItemCount == 1 && pinnedSongs != null) return AutomotiveSongResolution(pinnedSongs, 0)
     if (requestedItemCount == 1 && singleItemQueue != null) {
-        return AutomotiveSongResolution(singleItemQueue.songs, singleItemQueue.startIndex)
+        return AutomotiveSongResolution(
+            songs = singleItemQueue.songs,
+            startIndex = singleItemQueue.startIndex,
+            suppressAutoLoadMore = singleItemQueue.suppressAutoLoadMore,
+            radioSeed = singleItemQueue.radioSeed,
+        )
     }
     if (individuallyResolvedSongs.size != requestedItemCount || individuallyResolvedSongs.any { it == null }) return null
     val songs = individuallyResolvedSongs.filterNotNull()
@@ -519,6 +526,8 @@ internal sealed interface AutomotiveMediaItemsApplication {
         val replacesQueue: Boolean,
         val shuffleModeEnabled: Boolean?,
         val playlistPage: PlaylistPage?,
+        val suppressAutoLoadMore: Boolean,
+        val radioSeed: SongItem?,
     ) : AutomotiveMediaItemsApplication
 }
 
@@ -529,9 +538,11 @@ class AutomotivePlaybackRequestGate internal constructor(
         queueTitle: String?,
         shuffleModeEnabled: Boolean?,
         playlistPage: PlaylistPage?,
+        suppressAutoLoadMore: Boolean,
+        radioSeed: SongItem?,
         replacement: () -> Unit,
     ) -> Unit =
-        { _, _, _, _, _, replacement -> replacement() },
+        { _, _, _, _, _, _, _, replacement -> replacement() },
 ) {
     private data class PendingApplication(
         val generation: Long,
@@ -543,6 +554,8 @@ class AutomotivePlaybackRequestGate internal constructor(
         val replacesQueue: Boolean,
         val shuffleModeEnabled: Boolean?,
         val playlistPage: PlaylistPage?,
+        val suppressAutoLoadMore: Boolean,
+        val radioSeed: SongItem?,
     )
 
     private var generation = 0L
@@ -572,6 +585,8 @@ class AutomotivePlaybackRequestGate internal constructor(
         replacesQueue: Boolean = true,
         shuffleModeEnabled: Boolean? = null,
         playlistPage: PlaylistPage? = null,
+        suppressAutoLoadMore: Boolean = false,
+        radioSeed: SongItem? = null,
         canApply: Boolean = true,
     ): MediaSession.MediaItemsWithStartPosition {
         if (!canApply || requestGeneration != generation || mediaItems.isEmpty()) throw CancellationException()
@@ -588,6 +603,8 @@ class AutomotivePlaybackRequestGate internal constructor(
                 replacesQueue = replacesQueue,
                 shuffleModeEnabled = shuffleModeEnabled,
                 playlistPage = playlistPage,
+                suppressAutoLoadMore = suppressAutoLoadMore,
+                radioSeed = radioSeed,
             )
         return MediaSession.MediaItemsWithStartPosition(resolvedItems, startIndex, startPositionMs)
     }
@@ -624,6 +641,8 @@ class AutomotivePlaybackRequestGate internal constructor(
             pending.replacesQueue,
             pending.shuffleModeEnabled,
             pending.playlistPage,
+            pending.suppressAutoLoadMore,
+            pending.radioSeed,
         )
     }
 
@@ -633,7 +652,16 @@ class AutomotivePlaybackRequestGate internal constructor(
         startIndex: Int,
         replacement: () -> Unit,
     ) {
-        queueReplacement(songs, startIndex, application.queueTitle, application.shuffleModeEnabled, application.playlistPage, replacement)
+        queueReplacement(
+            songs,
+            startIndex,
+            application.queueTitle,
+            application.shuffleModeEnabled,
+            application.playlistPage,
+            application.suppressAutoLoadMore,
+            application.radioSeed,
+            replacement,
+        )
     }
 }
 

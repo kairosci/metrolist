@@ -108,6 +108,7 @@ internal class AndroidQueueCoordinator(
         }
     private var playlistPageJob: Job? = null
     private var lastAutoLoadedSongId: String? = null
+    private var suppressAutoLoadMore = false
 
     @Volatile
     var queueSessionId = 0L
@@ -256,6 +257,7 @@ internal class AndroidQueueCoordinator(
         queueTitleState.value = queueTitle
         queueChipsState.value = emptyList()
         isFiniteQueue = finite
+        suppressAutoLoadMore = false
         isRadioQueue = false
         radioQueueContinuation = null
         radioQueuePlaylistId = null
@@ -286,12 +288,14 @@ internal class AndroidQueueCoordinator(
         queueTitle: String?,
         finite: Boolean,
         playlistPage: PlaylistPage? = null,
+        suppressAutoLoadMore: Boolean = false,
         replacement: () -> Unit,
     ) {
         val seed = songs.getOrNull(startIndex) ?: return
         synchronized(queueSessionLock) {
             resetQueueSession(seed.id, queueTitle, finite)
             this.playlistPage = playlistPage
+            this.suppressAutoLoadMore = suppressAutoLoadMore
             queuedSongIds.addAll(songs.map(SongItem::id))
             replacement()
         }
@@ -567,8 +571,9 @@ internal class AndroidQueueCoordinator(
             },
         )
 
-    private fun canBootstrapRecommendations(): Boolean =
-        shouldBootstrapQueueRecommendations(isFiniteQueue, Settings.shared.autoLoadMore, playlistPage?.hasMore == true)
+    internal fun canBootstrapRecommendations(): Boolean =
+        !suppressAutoLoadMore &&
+            shouldBootstrapQueueRecommendations(isFiniteQueue, Settings.shared.autoLoadMore, playlistPage?.hasMore == true)
 
     fun selectQueueChip(chipId: String) {
         if (AndroidDeviceConnect.manager.remote.isFollowing || AndroidListenTogetherManager.isGuestPlaybackLocked) return
@@ -712,7 +717,7 @@ internal class AndroidQueueCoordinator(
                         shouldAutoLoadMore(
                             currentIndex = currentIndex,
                             queue = queue,
-                            autoLoadMore = Settings.shared.autoLoadMore,
+                            autoLoadMore = Settings.shared.autoLoadMore && !suppressAutoLoadMore,
                             repeatMode = repeatMode,
                         ),
                 )
@@ -756,7 +761,7 @@ internal class AndroidQueueCoordinator(
         if (!PlaybackNetworkStateStore.current.connected) return false
         recommendationBootstrapJob?.join()
         if (!PlaybackNetworkStateStore.current.connected || sessionId != queueSessionId) return false
-        if (!Settings.shared.autoLoadMore || repeatMode.value != Player.REPEAT_MODE_OFF) return false
+        if (!Settings.shared.autoLoadMore || suppressAutoLoadMore || repeatMode.value != Player.REPEAT_MODE_OFF) return false
 
         val currentQueue = player.songQueue.value
         val currentIndex = player.currentMediaItemIndex.value
@@ -988,7 +993,7 @@ internal class AndroidQueueCoordinator(
             return
         }
 
-        if (isFiniteQueue && !Settings.shared.autoLoadMore) {
+        if (isFiniteQueue && (!Settings.shared.autoLoadMore || suppressAutoLoadMore)) {
             player.skipToNext()
             return
         }
@@ -999,7 +1004,7 @@ internal class AndroidQueueCoordinator(
             return
         }
 
-        if (Settings.shared.autoLoadMore) {
+        if (Settings.shared.autoLoadMore && !suppressAutoLoadMore) {
             val sessionId = queueSessionId
             val loaded = performAutoLoadMore(sessionId, player.currentSong.value?.id)
             if (loaded && sessionId == queueSessionId && player.currentMediaItemIndex.value < player.songQueue.value.lastIndex) {
@@ -1027,7 +1032,7 @@ internal class AndroidQueueCoordinator(
         recommendationBootstrapJob?.join()
         if (!isCurrent()) return false
         if (player.currentMediaItemIndex.value < player.songQueue.value.lastIndex) return true
-        if (!Settings.shared.autoLoadMore || repeatMode.value != Player.REPEAT_MODE_OFF) return false
+        if (!Settings.shared.autoLoadMore || suppressAutoLoadMore || repeatMode.value != Player.REPEAT_MODE_OFF) return false
         val requestGeneration = ++recommendationRequestGeneration
         val seenContinuations = mutableSetOf<String>()
         var continuation = radioQueueContinuation

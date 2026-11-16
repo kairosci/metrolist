@@ -197,6 +197,8 @@ The **Quick-add playlist** setting selects an editable saved playlist for the no
 
 Auto playback requests keep their resolved metadata until the session applies them, even if the metadata cache evicts it. Indexed queue selections cancel pending Auto requests so a late result cannot override them. Queue selection accepts occurrence-specific media IDs. Transport-only controllers can select an existing queue entry but cannot replace the queue or browse.
 
+The Android Auto search-song playback mode applies only to songs selected from search. Queue mode keeps the search results queue. Single-song mode plays only the selected song and suppresses automatic recommendation loading. Radio mode starts a radio queue only after that Auto request is accepted and playback begins, using the committed playback song as its seed. Other browse selections keep their normal queue behavior.
+
 The YouTube playlists folder reads saved remote playlists without a network request while offline. If an online listing fails before returning anything, it falls back to stored playlists; a successful empty listing stays empty.
 
 Android voice playlist requests skip unavailable or blocked songs and page until a playable occurrence is found or the cursor ends, keeping duplicates and the unfiltered cursor.

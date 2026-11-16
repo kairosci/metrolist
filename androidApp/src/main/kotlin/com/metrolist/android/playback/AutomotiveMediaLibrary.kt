@@ -237,6 +237,8 @@ internal data class AutomotiveSongQueue(
     val startIndex: Int,
     val playlistPage: PlaylistPage? = null,
     val shuffle: Boolean = false,
+    val suppressAutoLoadMore: Boolean = false,
+    val radioSeed: SongItem? = null,
 )
 
 internal suspend fun automotiveLikedSongs(

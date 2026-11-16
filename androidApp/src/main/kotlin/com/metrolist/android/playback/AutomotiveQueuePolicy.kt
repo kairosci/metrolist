@@ -13,10 +13,13 @@ import com.metrolist.shared.playback.PlaybackFailureClassifier
 import com.metrolist.shared.playback.QueuePlaybackRequest
 import com.metrolist.shared.settings.AutomotiveSongPlaybackMode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.selects.select
 import timber.log.Timber
 
 internal fun nextMediaSessionRepeatMode(mode: Int): Int =
@@ -46,7 +49,10 @@ internal suspend fun offlineAutomotiveQueue(
     val playableIndices = queue.songs.indices.filter { isCached(queue.songs[it].id) }
     if (playableIndices.isEmpty()) return null
     val selected = playableIndices.firstOrNull { it >= queue.startIndex } ?: playableIndices.first()
-    return AutomotiveSongResolution(playableIndices.map(queue.songs::get), playableIndices.indexOf(selected))
+    return queue.copy(
+        songs = playableIndices.map(queue.songs::get),
+        startIndex = playableIndices.indexOf(selected),
+    )
 }
 
 internal suspend fun nextOfflineQueueIndex(
@@ -113,22 +119,24 @@ internal suspend fun resolveAutomotiveSearchSongQueue(
     item: MediaItem,
     library: AutomotiveMediaLibrary,
     mode: AutomotiveSongPlaybackMode,
-    onRadioSeed: (SongItem) -> Unit = {}
 ): AutomotiveSongQueue? {
-    val isSearchSong = AutomotiveMediaIds.browseSong(item.mediaId)
-        ?.parentId?.startsWith("auto:search:") == true
+    val isSearchSong =
+        AutomotiveMediaIds
+            .browseSong(item.mediaId)
+            ?.parentId
+            ?.startsWith("auto:search:") == true
 
     if (isSearchSong && mode != AutomotiveSongPlaybackMode.QUEUE) {
         return when (mode) {
             AutomotiveSongPlaybackMode.SINGLE_SONG -> {
                 library.resolveSong(item)?.let { song ->
-                    AutomotiveSongQueue(songs = listOf(song), startIndex = 0)
+                    AutomotiveSongQueue(songs = listOf(song), startIndex = 0, suppressAutoLoadMore = true)
                 }
             }
+
             AutomotiveSongPlaybackMode.RADIO -> {
                 library.resolveSong(item)?.let { song ->
-                    onRadioSeed(song)
-                    AutomotiveSongQueue(songs = listOf(song), startIndex = 0)
+                    AutomotiveSongQueue(songs = listOf(song), startIndex = 0, suppressAutoLoadMore = true, radioSeed = song)
                 }
             }
         } ?: library.resolveSongQueue(item)
@@ -137,8 +145,7 @@ internal suspend fun resolveAutomotiveSearchSongQueue(
 }
 
 internal suspend fun awaitAutomotiveRadioSeed(
-    song: SongItem,
-    initialRequestId: Long,
+    requestId: Long,
     requests: SharedFlow<QueuePlaybackRequest>,
     currentSong: StateFlow<SongItem?>,
     isPlaying: StateFlow<Boolean>,
@@ -146,13 +153,26 @@ internal suspend fun awaitAutomotiveRadioSeed(
     latestRequestId: () -> Long,
     playMix: (SongItem) -> Unit,
 ) {
-    val request = requests.first { it.requestId > initialRequestId }
-    if (request.song.id != song.id) return
+    if (requests.first().requestId != requestId) return
 
-    combine(currentSong, isPlaying, transitionPending) { current, playing, pending ->
-        current?.id == song.id && playing && !pending
-    }.first { it }
-    if (latestRequestId() == request.requestId) {
-        playMix(song)
+    coroutineScope {
+        val laterRequest = async { requests.first { it.requestId > requestId } }
+        val startedSong =
+            async {
+                combine(currentSong, isPlaying, transitionPending) { current, playing, pending ->
+                    current.takeIf { playing && !pending }
+                }.first { it != null }
+            }
+        try {
+            select<Unit> {
+                laterRequest.onAwait { }
+                startedSong.onAwait { song ->
+                    if (latestRequestId() == requestId) playMix(requireNotNull(song))
+                }
+            }
+        } finally {
+            laterRequest.cancel()
+            startedSong.cancel()
+        }
     }
 }

@@ -292,7 +292,16 @@ class MusicService :
     private val automotiveRootChildrenLimit = ConcurrentHashMap<MediaSession.ControllerInfo, Int>()
     private val automotiveRootBrowsableOnly = ConcurrentHashMap<MediaSession.ControllerInfo, Boolean>()
     private val automotivePlaybackRequestGate =
-        AutomotivePlaybackRequestGate { songs, startIndex, queueTitle, shuffleModeEnabled, playlistPage, replacement ->
+        AutomotivePlaybackRequestGate {
+            songs,
+            startIndex,
+            queueTitle,
+            shuffleModeEnabled,
+            playlistPage,
+            suppressAutoLoadMore,
+            radioSeed,
+            replacement,
+            ->
             val shuffleEnabled =
                 newQueueShuffleEnabled(
                     requestedShuffle = shuffleModeEnabled,
@@ -311,10 +320,33 @@ class MusicService :
                     ),
                 )
             ) {
-                queueCoordinator.replaceQueueSession(songs, startIndex, queueTitle, finite = true, playlistPage = playlistPage) {
+                queueCoordinator.replaceQueueSession(
+                    songs,
+                    startIndex,
+                    queueTitle,
+                    finite = true,
+                    playlistPage = playlistPage,
+                    suppressAutoLoadMore = suppressAutoLoadMore,
+                ) {
                     replacement()
                     if (shuffleEnabled) player.toggleShuffle(preserveHistory = shuffleModeEnabled != true)
                     _shuffleModeEnabled.value = player.isShuffleEnabled
+                }
+                radioSeed?.let {
+                    val requestId = player.latestQueuePlaybackRequestId
+                    pendingRadioJob?.cancel()
+                    pendingRadioJob =
+                        serviceScope.launch {
+                            awaitAutomotiveRadioSeed(
+                                requestId = requestId,
+                                requests = player.queuePlaybackRequests,
+                                currentSong = player.currentSong,
+                                isPlaying = player.isPlaying,
+                                transitionPending = player.playbackTransitionPending,
+                                latestRequestId = { player.latestQueuePlaybackRequestId },
+                                playMix = ::playMix,
+                            )
+                        }
                 }
             }
         }
@@ -1628,7 +1660,7 @@ class MusicService :
                 CastQueueReplacementResult.REMOTE -> {
                     streamRecoveryVideoId = null
                     streamRecoveryBudget = null
-                    if ((!queueCoordinator.isFiniteQueue || Settings.shared.autoLoadMore) &&
+                    if (queueCoordinator.canBootstrapRecommendations() &&
                         queueCoordinator.recommendationBootstrapJob == null
                     ) {
                         bootstrapRecommendations(queueCoordinator.recommendationSeedSongId ?: request.song.id)
@@ -2005,7 +2037,7 @@ class MusicService :
         if (stagedShouldCommit != null) return true
         syncPlayback.onLocalTrackLoaded()
         AndroidDeviceConnect.manager.remote.localStateChanged(trackChanged = true)
-        if ((!queueCoordinator.isFiniteQueue || Settings.shared.autoLoadMore) && queueCoordinator.recommendationBootstrapJob == null) {
+        if (queueCoordinator.canBootstrapRecommendations() && queueCoordinator.recommendationBootstrapJob == null) {
             bootstrapRecommendations(queueCoordinator.recommendationSeedSongId ?: request.song.id)
         }
         return true
@@ -2654,7 +2686,7 @@ class MusicService :
             }
         if (loaded) {
             syncPlayback.onLocalTrackLoaded()
-            if (Settings.shared.autoLoadMore && queueCoordinator.recommendationBootstrapJob == null) {
+            if (queueCoordinator.canBootstrapRecommendations() && queueCoordinator.recommendationBootstrapJob == null) {
                 bootstrapRecommendations(queueCoordinator.recommendationSeedSongId ?: songs.getOrNull(startIndex)?.id ?: return true)
             }
         }
@@ -3399,28 +3431,14 @@ class MusicService :
                 }
 
                 val pinnedQueue = requestedItem?.let { automotiveLibrary.resolvePinnedPlaylist(it) }
-                val songQueue = requestedItem?.let { item ->
-                    resolveAutomotiveSearchSongQueue(
-                        item = item,
-                        library = automotiveLibrary,
-                        mode = Settings.shared.androidAutoSongPlaybackMode,
-                        onRadioSeed = { song ->
-                            val initialRequestId = player.latestQueuePlaybackRequestId
-                            pendingRadioJob = serviceScope.launch {
-                                awaitAutomotiveRadioSeed(
-                                    song = song,
-                                    initialRequestId = initialRequestId,
-                                    requests = player.queuePlaybackRequests,
-                                    currentSong = player.currentSong,
-                                    isPlaying = player.isPlaying,
-                                    transitionPending = player.playbackTransitionPending,
-                                    latestRequestId = { player.latestQueuePlaybackRequestId },
-                                    playMix = { playMix(it) }
-                                )
-                            }
-                        }
-                    )
-                }
+                val songQueue =
+                    requestedItem?.let { item ->
+                        resolveAutomotiveSearchSongQueue(
+                            item = item,
+                            library = automotiveLibrary,
+                            mode = Settings.shared.androidAutoSongPlaybackMode,
+                        )
+                    }
                 val individuallyResolvedSongs =
                     if (mediaItems.size != 1 || (pinnedQueue == null && songQueue == null)) {
                         mediaItems.map { item ->
@@ -3458,6 +3476,8 @@ class MusicService :
                     queueTitle = pinnedQueue?.title,
                     shuffleModeEnabled = pinnedQueue?.shuffle ?: songQueue?.shuffle?.takeIf { it },
                     playlistPage = pinnedQueue?.playlistPage ?: songQueue?.playlistPage,
+                    suppressAutoLoadMore = playable?.suppressAutoLoadMore == true,
+                    radioSeed = playable?.radioSeed,
                     canApply = playable != null && !AndroidListenTogetherManager.isGuestPlaybackLocked,
                 )
             }
