@@ -14,11 +14,11 @@ On Android, an offload AudioTrack that stops advancing its playback head after e
 
 ## Android track transitions
 
-For audio tracks without a crossfade, Android adds the resolved next source to the active ExoPlayer playlist before the current track ends. ExoPlayer handles the boundary without replacing the player or its audio session. Per-stream metadata selects the normalization boost for queued PCM; output volume still applies attenuation. Offload requires gapless support and stays disabled when either queued track needs a software boost.
+For audio tracks without a crossfade, and for same-album tracks when crossfade and gapless are both enabled, Android adds the resolved next source to the active ExoPlayer playlist before the current track ends. ExoPlayer handles the boundary without replacing the player or its audio session. Per-stream metadata selects the normalization gain for queued PCM. Offload requires gapless support and stays disabled when either queued track needs software normalization.
 
 After a native handover, Android removes finished playlist items before queue promotion. The active player holds only the current source and, while preloading, the next source.
 
-Crossfades keep separate players and their gain ramps. Video, live streams and tracks restored at a nonzero position keep the separate-player preload path. Queue edits, repeat-one and end-of-song sleep timers cancel the queued source.
+Crossfades keep separate players and their gain ramps, except same-album tracks with gapless crossfade enabled, which use the playlist path without a gain ramp. Video, live streams and tracks restored at a nonzero position keep the separate-player preload path. Queue edits, repeat-one and end-of-song sleep timers cancel the queued source.
 
 ## Seek diagnostics
 

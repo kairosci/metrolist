@@ -15,10 +15,58 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE, application = Application::class, sdk = [33])
 class NormalizationAudioProcessorTest {
+    @Test
+    fun preferenceRefreshCannotBeOverwrittenByAnOlderConcurrentGainCalculation() {
+        var enabled = true
+        var blockCalculation = false
+        val calculationStarted = CountDownLatch(1)
+        val finishCalculation = CountDownLatch(1)
+        val resource = PlaybackResource("song", "file:///song", emptyMap(), null, null)
+        val processor =
+            NormalizationAudioProcessor {
+                if (enabled) {
+                    if (blockCalculation) {
+                        calculationStarted.countDown()
+                        check(finishCalculation.await(5, TimeUnit.SECONDS))
+                    }
+                    2f
+                } else {
+                    1f
+                }
+            }.apply {
+                this.resource = resource
+                configure(AudioProcessor.AudioFormat(48_000, 1, C.ENCODING_PCM_16BIT))
+                flush(AudioProcessor.StreamMetadata.DEFAULT)
+            }
+        blockCalculation = true
+        val staleRefresh = Thread { processor.refreshGain() }
+        staleRefresh.start()
+        assertTrue(calculationStarted.await(5, TimeUnit.SECONDS))
+        enabled = false
+        val preferenceRefreshStarted = CountDownLatch(1)
+        val preferenceRefresh =
+            Thread {
+                preferenceRefreshStarted.countDown()
+                processor.refreshGain()
+            }
+        preferenceRefresh.start()
+        assertTrue(preferenceRefreshStarted.await(5, TimeUnit.SECONDS))
+        finishCalculation.countDown()
+        staleRefresh.join(5_000)
+        preferenceRefresh.join(5_000)
+        assertTrue(!staleRefresh.isAlive)
+        assertTrue(!preferenceRefresh.isAlive)
+
+        processor.queueInput(ByteBuffer.allocateDirect(2).order(ByteOrder.nativeOrder()).putShort(0, 1000))
+        assertEquals(1000.toShort(), processor.output.getShort(0))
+    }
+
     @Test
     fun queuedPcmUsesItsOwnNormalizationBeforeTheCurrentSongChanges() {
         val outgoing = PlaybackResource("outgoing", "file:///outgoing", emptyMap(), null, null)
@@ -54,6 +102,39 @@ class NormalizationAudioProcessorTest {
         processor.resource = incoming
         processor.queueInput(ByteBuffer.allocateDirect(2).order(ByteOrder.nativeOrder()).putShort(0, 1000))
         assertEquals(2000.toShort(), processor.output.getShort(0))
+    }
+
+    @Test
+    fun queuedPcmUsesItsOwnAttenuationBeforeTheCurrentSongChanges() {
+        val outgoing = PlaybackResource("outgoing", "file:///outgoing", emptyMap(), null, null)
+        val incoming = outgoing.copy(videoId = "incoming", url = "file:///incoming")
+        val processor = NormalizationAudioProcessor { if (it?.videoId == incoming.videoId) 0.5f else 1f }
+        processor.resource = outgoing
+        processor.configure(AudioProcessor.AudioFormat(48_000, 1, C.ENCODING_PCM_16BIT))
+        val timeline =
+            SinglePeriodTimeline(
+                20_000_000L,
+                true,
+                false,
+                false,
+                null,
+                MediaItem
+                    .Builder()
+                    .setUri(incoming.url)
+                    .setTag(incoming)
+                    .build(),
+            )
+        processor.flush(
+            AudioProcessor.StreamMetadata
+                .Builder()
+                .setTimeline(timeline)
+                .setPeriodUid(timeline.getUidOfPeriod(0))
+                .build(),
+        )
+
+        processor.queueInput(ByteBuffer.allocateDirect(2).order(ByteOrder.nativeOrder()).putShort(0, 1000))
+        assertEquals(500.toShort(), processor.output.getShort(0))
+        assertEquals(1f, processor.normalizationGain)
     }
 
     @Test

@@ -874,9 +874,14 @@ class ExoPlaybackPlayer(
                 if (nextPlaylistIndex != C.INDEX_UNSET && eventTime.windowIndex == nextPlaylistIndex &&
                     source.currentMediaItemIndex != nextPlaylistIndex
                 ) {
-                    val onFailure = nextPlaylistFailure
-                    cancelNextInternal()
-                    onFailure?.invoke(error)
+                    val category = error.media3PlaybackFailureCategory()
+                    if (wasCanceled ||
+                        (!PlaybackNetworkRecovery.handles(category) && !PlaybackRecoveryPolicy.requiresFreshUrl(category))
+                    ) {
+                        val onFailure = nextPlaylistFailure
+                        cancelNextInternal()
+                        onFailure?.invoke(error)
+                    }
                     return
                 }
                 val category = error.media3PlaybackFailureCategory()
@@ -1997,7 +2002,7 @@ class ExoPlaybackPlayer(
                     equalizer = EqualizerProfiles.configuration,
                     normalizationGain =
                         if (nextPlaylistIndex != C.INDEX_UNSET) {
-                            maxOf(normalizationGain, nextResource.normalizationGain())
+                            minOf(normalizationGain, nextResource.normalizationGain())
                         } else {
                             normalizationGain
                         },
@@ -2051,7 +2056,6 @@ class ExoPlaybackPlayer(
                 effectivePlaybackVolume(_volume.value, audioOutputEnabled),
                 sleepTimerGain,
                 transitionGain,
-                (normalizationProcessors[exo]?.normalizationGain ?: 1f).coerceAtMost(1f),
             )
         nextPlayer?.let { player ->
             player.volume =
@@ -2059,7 +2063,6 @@ class ExoPlaybackPlayer(
                     effectivePlaybackVolume(_volume.value, audioOutputEnabled),
                     sleepTimerGain,
                     nextTransitionGain,
-                    (normalizationProcessors[player]?.normalizationGain ?: 1f).coerceAtMost(1f),
                 )
         }
     }
@@ -2159,7 +2162,11 @@ class ExoPlaybackPlayer(
         val playlistIndex = nextPlaylistIndex
         nextPlaylistIndex = C.INDEX_UNSET
         nextPlaylistFailure = null
-        if (playlistIndex != C.INDEX_UNSET && playlistIndex < exo.mediaItemCount) exo.removeMediaItem(playlistIndex)
+        if (playlistIndex != C.INDEX_UNSET && playlistIndex < exo.mediaItemCount &&
+            playlistIndex != exo.currentMediaItemIndex
+        ) {
+            exo.removeMediaItem(playlistIndex)
+        }
         val candidate = nextPlayer
         val token = nextToken
         val reporter = nextPlaybackReporter

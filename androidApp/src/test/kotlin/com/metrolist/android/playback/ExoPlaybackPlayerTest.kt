@@ -29,6 +29,7 @@ import com.metrolist.shared.deviceconnect.DcLocalPlaybackState
 import com.metrolist.shared.model.AlbumTiny
 import com.metrolist.shared.model.SearchResultPage
 import com.metrolist.shared.model.SongItem
+import com.metrolist.shared.playback.PlaybackHttpStatusCarrier
 import com.metrolist.shared.playback.PlaybackSeekSource
 import com.metrolist.shared.playback.ffmpeg.SabrInputStream
 import com.metrolist.shared.playback.playbackCrossfadeGains
@@ -509,7 +510,10 @@ class ExoPlaybackPlayerTest {
             assertTrue(player.prepareAndPlay(first, resource, resumePlayback = false))
             val native = underlyingPlayer().also(::awaitPlaybackReady)
             val instanceId = player.currentPlaybackInstanceId
-            val error = IOException("Next source failed")
+            val error =
+                object : IOException("Next source failed"), PlaybackHttpStatusCarrier {
+                    override val playbackHttpStatusCode = 400
+                }
             val failures = mutableListOf<Throwable>()
             val token =
                 checkNotNull(
@@ -525,10 +529,19 @@ class ExoPlaybackPlayerTest {
                 native.trackSelectionParameters.audioOffloadPreferences.audioOffloadMode,
             )
             val listener = ReflectionHelpers.getField<AnalyticsListener>(player, "networkLoadListener")
+            val eventTime =
+                AnalyticsListener.EventTime(0L, native.currentTimeline, 1, null, 0L, native.currentTimeline, 0, null, 0L, 0L)
+            val loadEventInfo = LoadEventInfo(0L, DataSpec(Uri.parse(resource.url)), 0L)
+            val mediaLoadData = MediaLoadData(C.DATA_TYPE_MEDIA)
+            listener.onLoadError(eventTime, loadEventInfo, mediaLoadData, IOException("Temporary network failure"), false)
+            assertTrue(failures.isEmpty())
+            assertEquals(2, native.mediaItemCount)
+            assertTrue(player.isPreloadedPlaybackActive(token))
+
             listener.onLoadError(
-                AnalyticsListener.EventTime(0L, native.currentTimeline, 1, null, 0L, native.currentTimeline, 0, null, 0L, 0L),
-                LoadEventInfo(0L, DataSpec(Uri.parse(resource.url)), 0L),
-                MediaLoadData(C.DATA_TYPE_MEDIA),
+                eventTime,
+                loadEventInfo,
+                mediaLoadData,
                 error,
                 false,
             )

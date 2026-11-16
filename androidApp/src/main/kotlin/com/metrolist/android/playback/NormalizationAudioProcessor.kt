@@ -29,10 +29,11 @@ internal class NormalizationAudioProcessor(
 
     @Volatile private var streamGain = 1f
 
+    @Synchronized
     fun refreshGain() {
         normalizationGain = gain(resource)
         streamGain =
-            (if (streamResource == null || streamResource === resource) normalizationGain else gain(streamResource)).coerceAtLeast(1f)
+            if (streamResource == null || streamResource === resource) normalizationGain else gain(streamResource)
     }
 
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
