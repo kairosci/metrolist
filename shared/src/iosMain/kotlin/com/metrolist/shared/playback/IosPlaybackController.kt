@@ -286,7 +286,7 @@ internal class IosPlaybackController(
     private val isVideoResolving = MutableStateFlow(false)
     private var videoModeJob: Job? = null
     private var videoModeRequestId = 0L
-    private var failedVideoResourceId: String? = null
+    private val failedVideoResourceIds = mutableSetOf<String>()
     private var videoSurfacePlayer: IosMusicVideoSurfacePlayer? = null
     private var videoSurfaceUrl: String? = null
     private var videoSurfaceHeaders: Map<String, String>? = null
@@ -1077,9 +1077,10 @@ internal class IosPlaybackController(
                             allowSabr = false,
                             allowBoundedRange = false,
                         )
+                    val refreshFailedResource = videoSong.id in failedVideoResourceIds
                     val resource =
                         withContext(videoPlaybackDispatcher) {
-                            if (failedVideoResourceId == videoSong.id) {
+                            if (refreshFailedResource) {
                                 resolver.refresh(videoSong.id, hints, iosPlaybackAudioQuality(Settings.shared.audioQuality), videoSong)
                             } else {
                                 resolver.resolve(videoSong.id, hints, iosPlaybackAudioQuality(Settings.shared.audioQuality), videoSong)
@@ -1087,12 +1088,12 @@ internal class IosPlaybackController(
                         }
                     if (requestId != videoModeRequestId || player.currentSong.value?.id != song.id) return@launch
                     if (!resource.hasDirectVideo || resource.musicVideoId != null) {
-                        failedVideoResourceId = videoSong.id
+                        failedVideoResourceIds += videoSong.id
                         return@launch
                     }
                     videoPositionMap.value = resolvedVideo.positionMap
                     videoPlaybackResource.value = resource
-                    failedVideoResourceId = null
+                    failedVideoResourceIds -= videoSong.id
                     isVideoModeActive.value = true
                 } catch (error: CancellationException) {
                     throw error
@@ -1120,7 +1121,7 @@ internal class IosPlaybackController(
     }
 
     override fun reportVideoPlaybackFailure() {
-        failedVideoResourceId = videoPlaybackResource.value?.videoId
+        videoPlaybackResource.value?.videoId?.let(failedVideoResourceIds::add)
         videoModeRequestId++
         videoModeJob?.cancel()
         clearVideoMode()
