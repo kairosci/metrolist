@@ -51,10 +51,11 @@ class RadioQueuePolicyTest {
     @Test
     fun repeatedRadioQueuesCanVaryWithoutLosingSongs() {
         val songs = listOf(song("a"), song("b"), song("c"), song("d"))
-        val varied = varyRadioRecommendations(songs, Random(1))
+        val varied = varyRadioRecommendations(songs, classicRecommendations = false, random = Random(1))
 
         assertNotEquals(songs, varied)
         assertEquals(songs.toSet(), varied.toSet())
+        assertEquals(songs, varyRadioRecommendations(songs, classicRecommendations = true, random = Random(1)))
     }
 
     @Test

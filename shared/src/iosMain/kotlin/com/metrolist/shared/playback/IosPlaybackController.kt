@@ -1399,6 +1399,7 @@ internal class IosPlaybackController(
     ): RadioQueuePage? =
         recommendationHistory.select(
             firstPage = firstPage,
+            classicRecommendations = Settings.shared.classicRecommendations,
             isCurrent = {
                 val allowed = canAutoLoadMore || (isBootstrap && !finiteQueue)
                 if (!allowed && isBootstrap) deferredRadioBootstrap = true

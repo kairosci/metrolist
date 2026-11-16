@@ -31,6 +31,13 @@ class RadioRecommendationHistoryTest {
         continuation: String? = null,
     ) = RadioQueuePage(ids.map(::song), emptyList(), continuation)
 
+    private suspend fun RadioRecommendationHistory.select(
+        firstPage: RadioQueuePage,
+        filter: (List<SongItem>) -> List<SongItem>,
+        isCurrent: () -> Boolean,
+        loadMore: suspend (String) -> RadioQueuePage,
+    ): RadioQueuePage? = select(firstPage, Settings.shared.classicRecommendations, filter, isCurrent, loadMore)
+
     @Test
     fun repeatedSeedWithIdenticalFirstPageSelectsDifferentSongs() =
         runTest {

@@ -1,6 +1,5 @@
 package com.metrolist.shared.model
 
-import com.metrolist.shared.settings.Settings
 import kotlin.random.Random
 
 data class RadioQueuePage(
@@ -22,8 +21,9 @@ fun List<RadioQueueChip>.selectRadioQueueChip(selectedChipId: String): List<Radi
 
 fun varyRadioRecommendations(
     songs: List<SongItem>,
+    classicRecommendations: Boolean,
     random: Random = Random.Default,
-): List<SongItem> = if (Settings.shared.classicRecommendations) songs else songs.shuffled(random)
+): List<SongItem> = if (classicRecommendations) songs else songs.shuffled(random)
 
 fun buildRadioQueueRecommendations(
     songs: List<SongItem>,

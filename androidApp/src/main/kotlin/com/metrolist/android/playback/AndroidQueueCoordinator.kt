@@ -547,6 +547,7 @@ internal class AndroidQueueCoordinator(
     ): RadioQueuePage? =
         recommendationHistory.select(
             firstPage = page,
+            classicRecommendations = Settings.shared.classicRecommendations,
             filter = { songs ->
                 val currentIndex = player.currentMediaItemIndex.value
                 val retainedIds =
