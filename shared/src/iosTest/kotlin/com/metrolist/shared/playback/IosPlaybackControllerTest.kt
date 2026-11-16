@@ -1991,6 +1991,9 @@ class IosPlaybackControllerTest {
             var providePositionMap = true
             var provideRedirectedVideoResource = false
             var provideVideo = true
+            var holdAudioResolution = false
+            val audioResolutionStarted = CompletableDeferred<Unit>()
+            val audioResolution = CompletableDeferred<PlaybackResource>()
             val failedResolution = CompletableDeferred<Unit>()
             val videoResource =
                 PlaybackResource(
@@ -2010,6 +2013,10 @@ class IosPlaybackControllerTest {
                         audioQuality: AudioQuality,
                         sourceSong: SongItem?,
                     ): PlaybackResource {
+                        if (!hints.wantVideo && holdAudioResolution) {
+                            audioResolutionStarted.complete(Unit)
+                            return audioResolution.await()
+                        }
                         resolvedVideoRequests++
                         requestedVideo = hints.wantVideo
                         requestedHints = hints
@@ -2119,6 +2126,19 @@ class IosPlaybackControllerTest {
                 runCurrent()
                 assertEquals(4, resolvedVideoRequests)
                 assertFalse(controller.state.value.isVideoModeActive)
+
+                val pendingSong = song("pending-video-track")
+                holdAudioResolution = true
+                controller.play(pendingSong, listOf(pendingSong), startPlaying = false)
+                runCurrent()
+                assertTrue(audioResolutionStarted.isCompleted)
+                controller.setVideoMode(true)
+                runCurrent()
+                assertFalse(controller.state.value.isVideoModeActive)
+                audioResolution.complete(videoResource.copy(videoId = pendingSong.id, videoUrl = null))
+                runCurrent()
+                assertTrue(controller.state.value.isVideoModeActive)
+                assertEquals(5, resolvedVideoRequests)
             } finally {
                 backgroundScope.cancel()
                 player.release()
