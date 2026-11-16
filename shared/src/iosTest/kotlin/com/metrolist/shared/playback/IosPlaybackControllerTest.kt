@@ -1985,6 +1985,7 @@ class IosPlaybackControllerTest {
             val uploadedSong = song("uploaded-track").copy(isUploaded = true)
             val localSong = song("file:/local-track").copy(isLocal = true)
             var resolvedVideoRequests = 0
+            var refreshedVideoRequests = 0
             var requestedVideo = false
             var requestedHints: ContentHints? = null
             var providePositionMap = true
@@ -2024,7 +2025,10 @@ class IosPlaybackControllerTest {
                         hints: ContentHints,
                         audioQuality: AudioQuality,
                         sourceSong: SongItem?,
-                    ) = resolve(videoId, hints, audioQuality, sourceSong)
+                    ): PlaybackResource {
+                        refreshedVideoRequests++
+                        return resolve(videoId, hints, audioQuality, sourceSong)
+                    }
                 }
             try {
                 player.setQueue(listOf(audioSong, uploadedSong), 0, startPlaying = false)
@@ -2084,11 +2088,18 @@ class IosPlaybackControllerTest {
                 assertEquals(2, resolvedVideoRequests)
                 assertFalse(controller.state.value.isVideoResolving)
 
+                provideVideo = true
+                controller.setVideoMode(true)
+                runCurrent()
+                assertEquals(1, refreshedVideoRequests)
+                assertEquals(3, resolvedVideoRequests)
+                assertTrue(controller.state.value.isVideoModeActive)
+
                 player.setQueue(listOf(localSong), 0, startPlaying = false)
                 runCurrent()
                 controller.setVideoMode(true)
                 runCurrent()
-                assertEquals(2, resolvedVideoRequests)
+                assertEquals(3, resolvedVideoRequests)
                 assertFalse(controller.state.value.isVideoResolving)
 
                 providePositionMap = false
@@ -2096,7 +2107,7 @@ class IosPlaybackControllerTest {
                 runCurrent()
                 controller.setVideoMode(true)
                 runCurrent()
-                assertEquals(2, resolvedVideoRequests)
+                assertEquals(3, resolvedVideoRequests)
                 assertFalse(controller.state.value.isVideoModeActive)
 
                 providePositionMap = true
@@ -2106,7 +2117,7 @@ class IosPlaybackControllerTest {
                 runCurrent()
                 controller.setVideoMode(true)
                 runCurrent()
-                assertEquals(3, resolvedVideoRequests)
+                assertEquals(4, resolvedVideoRequests)
                 assertFalse(controller.state.value.isVideoModeActive)
             } finally {
                 backgroundScope.cancel()
