@@ -1112,7 +1112,7 @@ internal class IosPlaybackController(
         releaseMusicVideoSurfacePlayer()
     }
 
-    private fun releaseMusicVideoSurfacePlayer() {
+    internal fun releaseMusicVideoSurfacePlayer() {
         videoSurfacePlayer?.close()
         videoSurfacePlayer = null
         videoSurfaceUrl = null
