@@ -33,7 +33,9 @@ import com.metrolist.shared.settings.BlockedContent
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.state.GlobalYouTubeRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -102,6 +104,7 @@ data class SongListeningStats(
 class PlayHistoryRepository(
     private val database: MusicDatabase,
     private val dao: DatabaseDao,
+    private val applicationScope: CoroutineScope,
 ) {
     private data class SqlFilter(
         val sql: String,
@@ -297,28 +300,31 @@ class PlayHistoryRepository(
     suspend fun recordLocalPlay(
         song: SongItem,
         playTimeMs: Long,
-    ) = withContext(Dispatchers.IO) {
-        if (song.id.isBlank()) return@withContext
-        database.withDatabaseTransaction {
-            dao.upsertHistorySong(song)
-            dao.incrementTotalPlayTime(song.id, playTimeMs)
-            dao.insert(
-                Event(
-                    songId = song.id,
-                    timestamp = Instant.fromEpochMilliseconds(System.currentTimeMillis()).toLocalDateTime(TimeZone.UTC),
-                    playTime = playTimeMs,
-                    source = "LOCAL",
-                ),
+    ): Unit =
+        withContext(Dispatchers.IO) {
+            if (song.id.isBlank()) return@withContext
+            database.withDatabaseTransaction {
+                dao.upsertHistorySong(song)
+                dao.incrementTotalPlayTime(song.id, playTimeMs)
+                dao.insert(
+                    Event(
+                        songId = song.id,
+                        timestamp = Instant.fromEpochMilliseconds(System.currentTimeMillis()).toLocalDateTime(TimeZone.UTC),
+                        playTime = playTimeMs,
+                        source = "LOCAL",
+                    ),
+                )
+            }
+            Timber.tag(HISTORY_LOG_TAG).d(
+                "local play recorded songId=%s playTimeMs=%d artists=%d",
+                song.id,
+                playTimeMs,
+                song.artists.size,
             )
+            if (Settings.shared.classicRecommendations) {
+                applicationScope.launch { recordRelatedSongs(song.id) }
+            }
         }
-        Timber.tag(HISTORY_LOG_TAG).d(
-            "local play recorded songId=%s playTimeMs=%d artists=%d",
-            song.id,
-            playTimeMs,
-            song.artists.size,
-        )
-        if (Settings.shared.classicRecommendations) recordRelatedSongs(song.id)
-    }
 
     /** Stores the songs YouTube relates to [songId], feeding the classic local Quick picks. */
     private suspend fun recordRelatedSongs(songId: String) {
@@ -326,13 +332,14 @@ class PlayHistoryRepository(
             if (dao.hasRelatedSongs(songId)) return
             val related =
                 GlobalYouTubeRepository.instance
-                    .startRadioQueue(songId)
+                    .startRadioQueue(videoId = songId, playlistId = null)
                     .songs
                     .filter { it.id.isNotBlank() && it.id != songId }
                     .distinctBy { it.id }
                     .take(RELATED_SONGS_LIMIT)
             if (related.isEmpty()) return
             database.withDatabaseTransaction {
+                if (dao.hasRelatedSongs(songId)) return@withDatabaseTransaction
                 related.forEach { relatedSong ->
                     dao.upsertHistorySong(relatedSong)
                     dao.insert(RelatedSongMap(songId = songId, relatedSongId = relatedSong.id))

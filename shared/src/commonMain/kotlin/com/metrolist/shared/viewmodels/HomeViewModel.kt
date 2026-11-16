@@ -53,6 +53,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -64,6 +65,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -203,6 +206,31 @@ class HomeViewModel(
         MutableStateFlow(
             HomeUiState(isLoading = true, isRestoringCache = true, speedDialSurprisePinned = Settings.shared.speedDialSurprisePinned),
         )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val classicQuickPickInputs =
+        snapshotFlow { Settings.shared.classicRecommendations }
+            .distinctUntilChanged()
+            .flatMapLatest { enabled ->
+                if (!enabled) {
+                    flowOf(Triple(false, emptyList(), emptyList()))
+                } else {
+                    combine(
+                        database
+                            .dao()
+                            .quickPicks()
+                            .map { songs -> songs.map(Song::toSongItem) }
+                            .distinctUntilChanged(),
+                        database
+                            .dao()
+                            .forgottenFavorites()
+                            .map { songs -> songs.map(Song::toSongItem) }
+                            .distinctUntilChanged(),
+                    ) { localQuickPicks, localForgottenFavorites ->
+                        Triple(true, localQuickPicks, localForgottenFavorites)
+                    }
+                }
+            }
     val uiState: StateFlow<HomeUiState> =
         combine(
             _uiState,
@@ -213,10 +241,23 @@ class HomeViewModel(
                     albums.mapTo(mutableSetOf()) { it.album.id }
                 }.distinctUntilChanged(),
             snapshotFlow { Settings.shared.hiddenHomeItemsJson }.map { HomeContentFilter(HiddenHomeItems.all()) },
-        ) { state, savedAlbumIds, homeFilter ->
+            classicQuickPickInputs,
+        ) { state, savedAlbumIds, homeFilter, quickPickInputs ->
+            val (classicRecommendations, localQuickPicks, localForgottenFavorites) = quickPickInputs
+            val apiQuickPicks = findSectionSongs(state.data.orEmpty(), "FEmusic_quickpicks")
+            val quickPicks =
+                selectQuickPicks(
+                    classicRecommendations,
+                    apiQuickPicks,
+                    state.quickPicks,
+                    localQuickPicks,
+                    localForgottenFavorites,
+                    isFilteredHome(state.selectedChip?.params, state.selectedChip?.browseId ?: "FEmusic_home"),
+                )
             state
                 .copy(
                     sections = state.sections.withLibraryMusicAlbumsOnly(savedAlbumIds),
+                    quickPicks = quickPicks.distinctBy(::canonicalHomeItemId),
                     chipFeeds =
                         state.chipFeeds.map {
                             it.copy(sections = homeFilter.filterSections(it.sections.withLibraryMusicAlbumsOnly(savedAlbumIds)))
@@ -987,7 +1028,12 @@ class HomeViewModel(
                 findSectionsByBrowseId(allSections, "FEmusic_charts")
                     .flatMap { it.items.filterIsInstance<AlbumItem>() }
                     .distinctBy(::canonicalHomeItemId),
-            quickPicks = preferredQuickPicks(apiQuickPicks, quickPicks).distinctBy(::canonicalHomeItemId),
+            quickPicks =
+                if (isFilteredHome(selectedChip?.params, selectedChip?.browseId ?: "FEmusic_home")) {
+                    apiQuickPicks.ifEmpty { quickPicks }
+                } else {
+                    preferredQuickPicks(apiQuickPicks, quickPicks)
+                }.distinctBy(::canonicalHomeItemId),
             newReleases = newReleasesFrom(allSections).distinctBy(::canonicalHomeItemId),
             keepListening = apiKeepListening.ifEmpty { keepListening }.distinctBy(::canonicalHomeItemId),
             forgottenFavorites = apiForgottenFavorites.ifEmpty { forgottenFavorites }.distinctBy(::canonicalHomeItemId),
@@ -1329,7 +1375,12 @@ class HomeViewModel(
                     .flatMap { it.items.filterIsInstance<AlbumItem>() }
                     .distinctBy { it.id }
                     .ifEmpty { albumCharts },
-            quickPicks = preferredQuickPicks(apiQuickPicks, quickPicks),
+            quickPicks =
+                if (isFilteredHome(selectedChip?.params, selectedChip?.browseId ?: "FEmusic_home")) {
+                    apiQuickPicks.ifEmpty { quickPicks }
+                } else {
+                    preferredQuickPicks(apiQuickPicks, quickPicks)
+                },
             newReleases = newReleasesFrom(cachedSections).ifEmpty { newReleases },
             keepListening = apiKeepListening.ifEmpty { keepListening },
             forgottenFavorites = apiForgottenFavorites.ifEmpty { forgottenFavorites },
@@ -1882,8 +1933,23 @@ internal fun classicQuickPicks(
         .shuffled()
         .take(20)
 
+internal fun selectQuickPicks(
+    classicRecommendations: Boolean,
+    apiQuickPicks: List<SongItem>,
+    currentQuickPicks: List<SongItem>,
+    localQuickPicks: List<SongItem>,
+    localForgottenFavorites: List<SongItem>,
+    isFiltered: Boolean = false,
+): List<SongItem> =
+    if (isFiltered) {
+        apiQuickPicks.ifEmpty { currentQuickPicks }
+    } else if (classicRecommendations) {
+        classicQuickPicks(localQuickPicks, localForgottenFavorites).ifEmpty { apiQuickPicks }
+    } else {
+        if (apiQuickPicks.isNotEmpty()) apiQuickPicks else currentQuickPicks
+    }
+
 private fun preferredQuickPicks(
     apiQuickPicks: List<SongItem>,
     current: List<SongItem>,
-): List<SongItem> =
-    if (Settings.shared.classicRecommendations) current.ifEmpty { apiQuickPicks } else apiQuickPicks.ifEmpty { current }
+): List<SongItem> = if (Settings.shared.classicRecommendations) current.ifEmpty { apiQuickPicks } else apiQuickPicks.ifEmpty { current }

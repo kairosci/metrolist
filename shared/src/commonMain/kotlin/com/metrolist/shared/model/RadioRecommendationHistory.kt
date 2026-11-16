@@ -23,6 +23,7 @@ class RadioRecommendationHistory {
     ): RadioQueuePage? {
         if (Settings.shared.classicRecommendations) {
             // Classic (13.x) behaviour: keep YouTube's own order and don't skip songs recommended before.
+            currentCoroutineContext().ensureActive()
             if (!isCurrent()) return null
             return firstPage.copy(songs = filter(firstPage.songs).filter { it.id.isNotBlank() }.distinctBy(SongItem::id))
         }

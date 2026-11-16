@@ -78,6 +78,7 @@ val LyricsNeutralColorKey = "lyricsNeutralColor"
 
 val SliderTrackThicknessDpKey = "sliderTrackThicknessDp"
 val PlaybackSpeedKey = "playbackSpeed"
+val ClassicRecommendationsKey = "classicRecommendations"
 val KeepPausedOnSongChangeKey = "keepPausedOnSongChange"
 val UseLegacyShuffleKey = "useLegacyShuffle"
 val PlaybackPitchKey = "playbackPitch"

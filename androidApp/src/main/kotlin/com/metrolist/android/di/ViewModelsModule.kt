@@ -31,7 +31,7 @@ import org.koin.dsl.module
 
 val viewModelsModule =
     module {
-        singleOf(::PlayHistoryRepository)
+        single { PlayHistoryRepository(get(), get(), get<CoroutineScope>()) }
 
         viewModel { StatsViewModel(get<PlayHistoryRepository>()) }
 

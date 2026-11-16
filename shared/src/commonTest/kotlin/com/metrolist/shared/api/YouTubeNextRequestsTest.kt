@@ -30,6 +30,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class YouTubeNextRequestsTest {
@@ -125,6 +126,30 @@ class YouTubeNextRequestsTest {
                 assertEquals(5, requests)
             } finally {
                 release.complete(Unit)
+                client.close()
+            }
+        }
+
+    @Test
+    fun classicRadioUsesPersonalUpNextAndKeepsExplicitChipRequests() =
+        runTest {
+            Settings.shared.classicRecommendations = true
+            val bodies = mutableListOf<String>()
+            val client =
+                mockClient { request ->
+                    bodies += request.body.toByteArray().decodeToString()
+                    respond("{}", headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                }
+            try {
+                val repository = YouTubeRepository(InnerTube(client, retryDelay = {}))
+                repository.startRadioQueue("video")
+                repository.startRadioQueue("video", playlistId = "PLchip", params = "chip-params")
+
+                assertEquals(2, bodies.size)
+                assertFalse("RDAMVMvideo" in bodies.first())
+                assertTrue("PLchip" in bodies.last())
+                assertTrue("chip-params" in bodies.last())
+            } finally {
                 client.close()
             }
         }
