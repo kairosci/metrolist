@@ -171,12 +171,12 @@ private fun isUnisonLyrics(
 ): Boolean {
     val sourceName = lyricSource?.trim()
     val providerId = provider?.trim()
-    val providerIsLyprio = providerId?.substringBefore('/', "")?.equals("Lyprio", ignoreCase = true) == true
+    val providerIsLyprio = providerId?.substringBefore('/')?.equals("Lyprio", ignoreCase = true) == true
+    val isLyprioUnisonVariant = providerIsLyprio && providerId.substringAfter('/').isKnownUnisonSource()
 
     return providerId.equals("Unison", ignoreCase = true) ||
-        (providerIsLyprio && providerId.substringAfter('/').isKnownUnisonSource()) ||
-        sourceName.equals("Unison", ignoreCase = true) ||
-        sourceName.isKnownUnisonSourceName()
+        isLyprioUnisonVariant ||
+        (providerIsLyprio && sourceName.isKnownUnisonSourceName())
 }
 
 private fun String?.isKnownUnisonSourceName(): Boolean =

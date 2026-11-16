@@ -38,10 +38,14 @@ class LyricsAttributionTest {
             assertEquals("https://unison.betterlyrics.org/song/Ugr4KKK_SqY", lyricsProviderUrl(provider, "Ugr4KKK_SqY"))
             assertEquals("https://unison.betterlyrics.org/curator/curator_1", lyricsCuratorUrl(provider, "curator_1"))
         }
-        for (source in listOf("UNISON_OFFLINE", "Unison Offline", "Unison")) {
+        for (source in listOf("UNISON_OFFLINE", "Unison")) {
             assertEquals("https://unison.betterlyrics.org/song/Ugr4KKK_SqY", lyricsProviderUrl("Lyprio", "Ugr4KKK_SqY", source))
             assertEquals("https://unison.betterlyrics.org/curator/curator_1", lyricsCuratorUrl("Lyprio", "curator_1", source))
         }
+        assertNull(lyricsProviderUrl("Lyprio/UNISONIC", "Ugr4KKK_SqY"))
+        assertNull(lyricsCuratorUrl("Lyprio/UNISONIC", "curator_1"))
+        assertNull(lyricsProviderUrl("Lyprio", "Ugr4KKK_SqY", "Unisonic"))
+        assertNull(lyricsCuratorUrl("Lyprio", "curator_1", "Unisonic"))
     }
 
     @Test
@@ -64,6 +68,16 @@ class LyricsAttributionTest {
         for (source in listOf("Unisonical", "UNISON_ARCHIVE")) {
             assertNull(lyricsProviderUrl("Lyprio", "Ugr4KKK_SqY", source))
             assertNull(lyricsCuratorUrl("Lyprio", "curator_1", source))
+        }
+    }
+
+    @Test
+    fun unisonSourceNamesDoNotOverrideAnUnrelatedProvider() {
+        for (provider in listOf("OtherProvider", "Musixmatch")) {
+            for (source in listOf("Unison", "UNISON_OFFLINE")) {
+                assertNull(lyricsProviderUrl(provider, "Ugr4KKK_SqY", source))
+                assertNull(lyricsCuratorUrl(provider, "curator_1", source))
+            }
         }
     }
 
