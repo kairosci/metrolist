@@ -17,7 +17,8 @@ class LyricsAttributionTest {
     @Test
     fun lyprioMlxSourceMetadataLinksBothLiveAndOfflineUnisonAttribution() {
         for (subprovider in listOf("UNISON", "UNISON_OFFLINE")) {
-            val document = attributionDocument("Unison", subprovider)
+            val source = if (subprovider == "UNISON_OFFLINE") "Other source" else "Unison"
+            val document = attributionDocument(source, subprovider)
             assertEquals("boidu", document.meta.lyricsCurator)
             val providerLabel = lyricsProviderLabel("Lyprio", document)
             for (provider in listOf("Lyprio", providerLabel)) {
