@@ -2158,6 +2158,17 @@ class ExoPlaybackPlayer(
     }
 
     private fun cancelNextInternal(preserveTransitionGain: Boolean = false) {
+        val transitionedPlaylistIndex =
+            nextPlaylistIndex.takeIf { it != C.INDEX_UNSET && it == exo.currentMediaItemIndex }
+        if (transitionedPlaylistIndex != null) {
+            val token = nextToken
+            val resource = nextResource
+            if (token != null && resource != null && swapToPreloaded(token, resource, null, initialTransitionGain = 1f)) return
+            val previousPlaylistIndex = transitionedPlaylistIndex - 1
+            if (previousPlaylistIndex >= 0) {
+                exo.seekTo(previousPlaylistIndex, _currentPosition.value.coerceAtLeast(0L))
+            }
+        }
         nextGeneration++
         val playlistIndex = nextPlaylistIndex
         nextPlaylistIndex = C.INDEX_UNSET
