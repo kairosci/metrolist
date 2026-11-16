@@ -19,14 +19,16 @@ class LyricsAttributionTest {
         for (subprovider in listOf("UNISON", "UNISON_OFFLINE")) {
             val document = attributionDocument("Unison", subprovider)
             assertEquals("boidu", document.meta.lyricsCurator)
-            for (provider in listOf("Lyprio", lyricsProviderLabel("Lyprio", document))) {
+            val providerLabel = lyricsProviderLabel("Lyprio", document)
+            for (provider in listOf("Lyprio", providerLabel)) {
+                val source = document.meta.lyricSource.takeIf { provider == "Lyprio" }
                 assertEquals(
                     "https://unison.betterlyrics.org/song/Ugr4KKK_SqY",
-                    lyricsProviderUrl(provider, document.meta.sourceId, document.meta.lyricSource),
+                    lyricsProviderUrl(provider, document.meta.sourceId, source),
                 )
                 assertEquals(
                     "https://unison.betterlyrics.org/curator/curator_1",
-                    lyricsCuratorUrl(provider, document.meta.lyricsCuratorId, document.meta.lyricSource),
+                    lyricsCuratorUrl(provider, document.meta.lyricsCuratorId, source),
                 )
             }
         }
