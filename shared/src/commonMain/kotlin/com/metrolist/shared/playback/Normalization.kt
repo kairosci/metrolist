@@ -14,3 +14,12 @@ fun normalizationBoostPcm16(
     val limited = if (magnitude <= 0.9) boosted else sign(boosted) * (0.9 + 0.1 * tanh((magnitude - 0.9) / 0.1))
     return (limited * 32768.0).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
 }
+
+fun normalizationPcm16(
+    sample: Short,
+    gain: Float,
+): Short {
+    if (gain >= 1f) return normalizationBoostPcm16(sample, gain)
+    if (gain <= 0f) return 0
+    return (sample * gain).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+}

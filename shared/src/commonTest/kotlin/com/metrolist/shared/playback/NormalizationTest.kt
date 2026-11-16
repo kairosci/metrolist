@@ -46,4 +46,12 @@ class NormalizationTest {
         assertTrue(peak > normalizationBoostPcm16(30_000, gain))
         assertTrue(abs(normalizationBoostPcm16(Short.MIN_VALUE, gain).toInt()) < 32768)
     }
+
+    @Test
+    fun normalizationPcm16AppliesQueuedTrackAttenuation() {
+        assertEquals(5_000.toShort(), normalizationPcm16(10_000, 0.5f))
+        assertEquals((-5_000).toShort(), normalizationPcm16((-10_000).toShort(), 0.5f))
+        assertEquals(0.toShort(), normalizationPcm16(10_000, 0f))
+        assertEquals(10_000.toShort(), normalizationPcm16(10_000, 1f))
+    }
 }

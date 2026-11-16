@@ -6,7 +6,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
-import com.metrolist.shared.playback.normalizationBoostPcm16
+import com.metrolist.shared.playback.normalizationPcm16
 import com.metrolist.shared.youtube.playback.PlaybackResource
 import java.nio.ByteBuffer
 
@@ -14,11 +14,14 @@ import java.nio.ByteBuffer
 internal class NormalizationAudioProcessor(
     private val gain: (PlaybackResource?) -> Float,
 ) : BaseAudioProcessor() {
+    @Volatile
     var resource: PlaybackResource? = null
         set(value) {
-            if (field === value) return
-            field = value
-            refreshGain()
+            synchronized(this) {
+                if (field === value) return
+                field = value
+                refreshGainLocked()
+            }
         }
 
     @Volatile
@@ -31,9 +34,7 @@ internal class NormalizationAudioProcessor(
 
     @Synchronized
     fun refreshGain() {
-        normalizationGain = gain(resource)
-        streamGain =
-            if (streamResource == null || streamResource === resource) normalizationGain else gain(streamResource)
+        refreshGainLocked()
     }
 
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
@@ -46,10 +47,7 @@ internal class NormalizationAudioProcessor(
                     .mediaItem.localConfiguration
                     ?.tag as? PlaybackResource
             }
-        if (streamResource !== nextStreamResource) {
-            streamResource = nextStreamResource
-            refreshGain()
-        }
+        updateStreamResource(nextStreamResource)
     }
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
@@ -67,9 +65,21 @@ internal class NormalizationAudioProcessor(
             output.put(inputBuffer)
         } else {
             while (inputBuffer.hasRemaining()) {
-                output.putShort(normalizationBoostPcm16(inputBuffer.short, boost))
+                output.putShort(normalizationPcm16(inputBuffer.short, boost))
             }
         }
         output.flip()
+    }
+
+    @Synchronized
+    private fun updateStreamResource(resource: PlaybackResource?) {
+        if (streamResource === resource) return
+        streamResource = resource
+        refreshGainLocked()
+    }
+
+    private fun refreshGainLocked() {
+        normalizationGain = gain(resource)
+        streamGain = if (streamResource == null || streamResource === resource) normalizationGain else gain(streamResource)
     }
 }
