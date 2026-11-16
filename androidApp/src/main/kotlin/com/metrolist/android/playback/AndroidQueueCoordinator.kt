@@ -20,6 +20,7 @@ import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.model.buildRadioQueueRecommendations
 import com.metrolist.shared.model.isPodcast
 import com.metrolist.shared.model.isVideoSong
+import com.metrolist.shared.model.radioPlaylistIdForMode
 import com.metrolist.shared.model.selectRadioQueueChip
 import com.metrolist.shared.playback.MusicQueue
 import com.metrolist.shared.playback.MusicQueueSnapshot
@@ -474,7 +475,7 @@ internal class AndroidQueueCoordinator(
             playQueue(songs = listOf(seed), queueTitle = title, finite = false, fromRemote = true)
         }
         isRadioQueue = true
-        radioQueuePlaylistId = "RDAMVM${seed.id}"
+        radioQueuePlaylistId = radioPlaylistIdForMode(seed.id, Settings.shared.classicRecommendations)
         radioQueueParams = null
         if (preserveCurrent) bootstrapRecommendations(seed.id)
         onSave()
@@ -501,7 +502,10 @@ internal class AndroidQueueCoordinator(
                             withQueueLoading {
                                 withContext(Dispatchers.IO) {
                                     if (continuation == null) {
-                                        GlobalYouTubeRepository.instance.startRadioQueue(seedSongId)
+                                        GlobalYouTubeRepository.instance.startRadioQueue(
+                                            seedSongId,
+                                            playlistId = radioPlaylistIdForMode(seedSongId, Settings.shared.classicRecommendations),
+                                        )
                                     } else {
                                         GlobalYouTubeRepository.instance.continueRadioQueue(continuation)
                                     }
@@ -527,7 +531,7 @@ internal class AndroidQueueCoordinator(
                                 expectedRequestGeneration = requestGeneration,
                                 replaceGeneratedSongs = false,
                                 generatedQueueSourceTitle = if (initial) QUEUE_SOURCE_AUTO_MIX else QUEUE_SOURCE_RECOMMENDED,
-                                playlistId = "RDAMVM$seedSongId",
+                                playlistId = radioPlaylistIdForMode(seedSongId, Settings.shared.classicRecommendations),
                                 params = null,
                             )
                         },
@@ -806,7 +810,10 @@ internal class AndroidQueueCoordinator(
                             if (continuation != null) {
                                 GlobalYouTubeRepository.instance.continueRadioQueue(continuation)
                             } else {
-                                GlobalYouTubeRepository.instance.startRadioQueue(seedId)
+                                GlobalYouTubeRepository.instance.startRadioQueue(
+                                    seedId,
+                                    playlistId = radioPlaylistIdForMode(seedId, Settings.shared.classicRecommendations),
+                                )
                             }
                         }
                     }
@@ -815,7 +822,7 @@ internal class AndroidQueueCoordinator(
                     expectedSessionId = sessionId,
                     expectedRequestGeneration = requestGeneration,
                     replaceGeneratedSongs = false,
-                    playlistId = radioQueuePlaylistId ?: "RDAMVM$seedId",
+                    playlistId = radioQueuePlaylistId ?: radioPlaylistIdForMode(seedId, Settings.shared.classicRecommendations),
                     params = radioQueueParams,
                 )
             } catch (e: CancellationException) {
@@ -868,7 +875,10 @@ internal class AndroidQueueCoordinator(
                 try {
                     withQueueLoading {
                         withContext(Dispatchers.IO) {
-                            GlobalYouTubeRepository.instance.startRadioQueue(seedSongId)
+                            GlobalYouTubeRepository.instance.startRadioQueue(
+                                seedSongId,
+                                playlistId = radioPlaylistIdForMode(seedSongId, Settings.shared.classicRecommendations),
+                            )
                         }
                     }
                 } catch (e: CancellationException) {
@@ -904,7 +914,7 @@ internal class AndroidQueueCoordinator(
         if (rawAdditions.isEmpty()) return false
 
         radioQueueContinuation = page.continuation
-        radioQueuePlaylistId = radioQueuePlaylistId ?: "RDAMVM$seedSongId"
+        radioQueuePlaylistId = radioQueuePlaylistId ?: radioPlaylistIdForMode(seedSongId, Settings.shared.classicRecommendations)
 
         val (toQueue, toSuggest) =
             if (promoteFirst) {
@@ -1040,7 +1050,10 @@ internal class AndroidQueueCoordinator(
                 withQueueLoading {
                     withContext(Dispatchers.IO) {
                         if (nextContinuation == null) {
-                            GlobalYouTubeRepository.instance.startRadioQueue(seedId)
+                            GlobalYouTubeRepository.instance.startRadioQueue(
+                                seedId,
+                                playlistId = radioPlaylistIdForMode(seedId, Settings.shared.classicRecommendations),
+                            )
                         } else {
                             GlobalYouTubeRepository.instance.continueRadioQueue(nextContinuation)
                         }
@@ -1053,7 +1066,7 @@ internal class AndroidQueueCoordinator(
                     expectedSessionId = sessionId,
                     expectedRequestGeneration = requestGeneration,
                     replaceGeneratedSongs = false,
-                    playlistId = radioQueuePlaylistId ?: "RDAMVM$seedId",
+                    playlistId = radioQueuePlaylistId ?: radioPlaylistIdForMode(seedId, Settings.shared.classicRecommendations),
                     params = radioQueueParams,
                 )
             if (appended) return player.currentMediaItemIndex.value < player.songQueue.value.lastIndex

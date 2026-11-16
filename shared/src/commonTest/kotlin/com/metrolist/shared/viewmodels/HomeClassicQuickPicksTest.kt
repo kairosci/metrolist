@@ -28,4 +28,12 @@ class HomeClassicQuickPicksTest {
         assertEquals(api, selectQuickPicks(false, api, current, emptyList(), emptyList()))
         assertEquals(current, selectQuickPicks(false, emptyList(), current, emptyList(), emptyList()))
     }
+
+    @Test
+    fun filteredQuickPicksUseMergedApiResultsEvenWhenClassicModeIsEnabled() {
+        val current = listOf(song("current"))
+        val mergedApi = listOf(song("current"), song("next"))
+
+        assertEquals(mergedApi, selectQuickPicks(true, mergedApi, current, emptyList(), emptyList(), isFiltered = true))
+    }
 }

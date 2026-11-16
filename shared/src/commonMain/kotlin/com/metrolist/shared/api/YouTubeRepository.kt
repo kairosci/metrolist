@@ -87,7 +87,6 @@ import com.metrolist.shared.model.toSongItem
 import com.metrolist.shared.playlist.LibraryDeletionTracker
 import com.metrolist.shared.playlist.PlaylistChanges
 import com.metrolist.shared.settings.BlockedContent
-import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.state.SongLikeState
 import com.metrolist.shared.utils.Logger
 import com.metrolist.shared.viewmodels.LIBRARY_REFRESH_TTL_MILLIS
@@ -2416,11 +2415,14 @@ class YouTubeRepository(
         }
     }
 
-    suspend fun startRadio(videoId: String): List<SongItem> = startRadioQueue(videoId).songs
+    suspend fun startRadio(
+        videoId: String,
+        playlistId: String? = "RDAMVM$videoId",
+    ): List<SongItem> = startRadioQueue(videoId, playlistId = playlistId).songs
 
     suspend fun startRadioQueue(
         videoId: String,
-        playlistId: String? = if (Settings.shared.classicRecommendations) null else "RDAMVM$videoId",
+        playlistId: String? = "RDAMVM$videoId",
         params: String? = null,
     ): RadioQueuePage {
         val page = parseRadioQueueResponse(nextResponse(videoId, playlistId, params))

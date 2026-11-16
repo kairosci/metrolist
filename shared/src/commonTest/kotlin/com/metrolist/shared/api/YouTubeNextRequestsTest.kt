@@ -133,7 +133,6 @@ class YouTubeNextRequestsTest {
     @Test
     fun classicRadioUsesPersonalUpNextAndKeepsExplicitChipRequests() =
         runTest {
-            Settings.shared.classicRecommendations = true
             val bodies = mutableListOf<String>()
             val client =
                 mockClient { request ->
@@ -142,7 +141,7 @@ class YouTubeNextRequestsTest {
                 }
             try {
                 val repository = YouTubeRepository(InnerTube(client, retryDelay = {}))
-                repository.startRadioQueue("video")
+                repository.startRadioQueue("video", playlistId = null)
                 repository.startRadioQueue("video", playlistId = "PLchip", params = "chip-params")
 
                 assertEquals(2, bodies.size)

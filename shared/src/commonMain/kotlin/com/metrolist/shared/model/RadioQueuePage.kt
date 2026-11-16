@@ -16,6 +16,11 @@ data class RadioQueueChip(
     val isSelected: Boolean,
 )
 
+fun radioPlaylistIdForMode(
+    videoId: String,
+    classicRecommendations: Boolean,
+): String? = if (classicRecommendations) null else "RDAMVM$videoId"
+
 fun List<RadioQueueChip>.selectRadioQueueChip(selectedChipId: String): List<RadioQueueChip> =
     map { chip -> chip.copy(isSelected = chip.id == selectedChipId) }
 

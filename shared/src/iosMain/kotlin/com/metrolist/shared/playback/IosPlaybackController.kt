@@ -17,6 +17,7 @@ import com.metrolist.shared.model.RepeatMode
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.model.buildRadioQueueRecommendations
 import com.metrolist.shared.model.isPodcast
+import com.metrolist.shared.model.radioPlaylistIdForMode
 import com.metrolist.shared.model.selectRadioQueueChip
 import com.metrolist.shared.playback.QUEUE_SOURCE_AUTO_MIX
 import com.metrolist.shared.scrobble.ScrobbleManager
@@ -1297,7 +1298,7 @@ internal class IosPlaybackController(
     }
 
     private fun defaultRadioPlaylistId(seedSongId: String): String? =
-        if (Settings.shared.classicRecommendations) null else "RDAMVM$seedSongId"
+        radioPlaylistIdForMode(seedSongId, Settings.shared.classicRecommendations)
 
     private fun bootstrapRecommendations(
         seedSongId: String,

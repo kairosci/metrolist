@@ -72,6 +72,7 @@ import com.metrolist.shared.model.isPodcast
 import com.metrolist.shared.model.isVideoSong
 import com.metrolist.shared.model.moveSelection
 import com.metrolist.shared.model.previewThumbnailUrl
+import com.metrolist.shared.model.radioPlaylistIdForMode
 import com.metrolist.shared.model.varyRadioRecommendations
 import com.metrolist.shared.playback.DESKTOP_PRELOAD_MIN_POSITION_MS
 import com.metrolist.shared.playback.MusicPlayer
@@ -2412,7 +2413,14 @@ object PlayerState {
 
     private val related =
         DesktopRelatedSongs(scope, { currentTrack?.id }) {
-            BlockedContent.filterPlayableSongs(GlobalYouTubeRepository.instance.startRadio(it)).drop(1).take(25)
+            BlockedContent
+                .filterPlayableSongs(
+                    GlobalYouTubeRepository.instance.startRadio(
+                        it,
+                        playlistId = radioPlaylistIdForMode(it, Settings.shared.classicRecommendations),
+                    ),
+                ).drop(1)
+                .take(25)
         }
     var relatedSongs: List<SongItem>
         get() = related.songs
@@ -3671,7 +3679,11 @@ object PlayerState {
         generation: Long,
     ): List<SongItem> {
         val repository = GlobalYouTubeRepository.instance
-        val firstPage = repository.startRadioQueue(seedId)
+        val firstPage =
+            repository.startRadioQueue(
+                seedId,
+                playlistId = radioPlaylistIdForMode(seedId, Settings.shared.classicRecommendations),
+            )
         val page =
             recommendationHistory.select(
                 firstPage = firstPage,

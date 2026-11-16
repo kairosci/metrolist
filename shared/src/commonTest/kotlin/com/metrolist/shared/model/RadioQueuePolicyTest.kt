@@ -64,6 +64,12 @@ class RadioQueuePolicyTest {
     }
 
     @Test
+    fun radioPlaylistSelectionIsExplicitForEachRecommendationMode() {
+        assertEquals(null, radioPlaylistIdForMode("seed", classicRecommendations = true))
+        assertEquals("RDAMVMseed", radioPlaylistIdForMode("seed", classicRecommendations = false))
+    }
+
+    @Test
     fun recommendationsExcludeSeedBlockedAndDuplicateSongs() {
         val recommendations =
             buildRadioQueueRecommendations(

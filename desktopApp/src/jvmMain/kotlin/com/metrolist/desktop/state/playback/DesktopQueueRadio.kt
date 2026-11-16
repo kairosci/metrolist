@@ -4,6 +4,7 @@ import com.metrolist.shared.model.RadioQueuePage
 import com.metrolist.shared.model.RadioRecommendationHistory
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.model.buildRadioQueueRecommendations
+import com.metrolist.shared.model.radioPlaylistIdForMode
 import com.metrolist.shared.playback.MusicQueue
 import com.metrolist.shared.playback.QUEUE_SOURCE_AUTO_MIX
 import com.metrolist.shared.settings.BlockedContent
@@ -21,7 +22,12 @@ internal class DesktopQueueRadio(
     private val scope: CoroutineScope,
     private val queue: MusicQueue,
     private val onQueueChanged: () -> Unit,
-    private val radio: suspend (String) -> RadioQueuePage = { GlobalYouTubeRepository.instance.startRadioQueue(it) },
+    private val radio: suspend (String) -> RadioQueuePage = {
+        GlobalYouTubeRepository.instance.startRadioQueue(
+            it,
+            playlistId = radioPlaylistIdForMode(it, Settings.shared.classicRecommendations),
+        )
+    },
     private val isBlocked: (SongItem) -> Boolean = BlockedContent::isBlocked,
     private val continueRadio: suspend (String) -> RadioQueuePage = { GlobalYouTubeRepository.instance.continueRadioQueue(it) },
     private val autoLoadMore: () -> Boolean = { Settings.shared.autoLoadMore },

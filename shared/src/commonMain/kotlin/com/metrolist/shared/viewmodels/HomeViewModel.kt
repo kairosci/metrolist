@@ -1032,7 +1032,7 @@ class HomeViewModel(
                 if (isFilteredHome(selectedChip?.params, selectedChip?.browseId ?: "FEmusic_home")) {
                     apiQuickPicks.ifEmpty { quickPicks }
                 } else {
-                    preferredQuickPicks(apiQuickPicks, quickPicks)
+                    preferredQuickPicks(Settings.shared.classicRecommendations, apiQuickPicks, quickPicks)
                 }.distinctBy(::canonicalHomeItemId),
             newReleases = newReleasesFrom(allSections).distinctBy(::canonicalHomeItemId),
             keepListening = apiKeepListening.ifEmpty { keepListening }.distinctBy(::canonicalHomeItemId),
@@ -1379,7 +1379,7 @@ class HomeViewModel(
                 if (isFilteredHome(selectedChip?.params, selectedChip?.browseId ?: "FEmusic_home")) {
                     apiQuickPicks.ifEmpty { quickPicks }
                 } else {
-                    preferredQuickPicks(apiQuickPicks, quickPicks)
+                    preferredQuickPicks(Settings.shared.classicRecommendations, apiQuickPicks, quickPicks)
                 },
             newReleases = newReleasesFrom(cachedSections).ifEmpty { newReleases },
             keepListening = apiKeepListening.ifEmpty { keepListening },
@@ -1950,6 +1950,7 @@ internal fun selectQuickPicks(
     }
 
 private fun preferredQuickPicks(
+    classicRecommendations: Boolean,
     apiQuickPicks: List<SongItem>,
     current: List<SongItem>,
-): List<SongItem> = if (Settings.shared.classicRecommendations) current.ifEmpty { apiQuickPicks } else apiQuickPicks.ifEmpty { current }
+): List<SongItem> = if (classicRecommendations) current.ifEmpty { apiQuickPicks } else apiQuickPicks.ifEmpty { current }
