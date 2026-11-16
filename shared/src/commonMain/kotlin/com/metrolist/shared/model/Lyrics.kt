@@ -171,16 +171,20 @@ private fun isUnisonLyrics(
 ): Boolean {
     val sourceName = lyricSource?.trim()
     val providerId = provider?.trim()
-    val lyprioSuffix = providerId?.substringAfter('/', "")?.trim()
     val providerIsLyprio = providerId?.substringBefore('/', "")?.equals("Lyprio", ignoreCase = true) == true
 
     return providerId.equals("Unison", ignoreCase = true) ||
-        providerId.equals("Lyprio/UNISON", ignoreCase = true) ||
-        (providerIsLyprio && lyprioSuffix?.startsWith("UNISON", ignoreCase = true) == true) ||
+        (providerIsLyprio && providerId.substringAfter('/').isKnownUnisonSource()) ||
         sourceName.equals("Unison", ignoreCase = true) ||
-        sourceName.equals("UNISON_OFFLINE", ignoreCase = true) ||
-        (sourceName?.startsWith("Unison", ignoreCase = true) == true)
+        sourceName.isKnownUnisonSourceName()
 }
+
+private fun String?.isKnownUnisonSourceName(): Boolean =
+    this.equals("Unison", ignoreCase = true) ||
+        this.equals("Unison Offline", ignoreCase = true) ||
+        this.equals("UNISON_OFFLINE", ignoreCase = true)
+
+private fun String.isKnownUnisonSource(): Boolean = equals("UNISON", ignoreCase = true) || equals("UNISON_OFFLINE", ignoreCase = true)
 
 private val UNISON_VIDEO_ID = Regex("[A-Za-z0-9_-]{11}")
 private val UNISON_CURATOR_ID = Regex("[A-Za-z0-9][A-Za-z0-9._~-]*")
