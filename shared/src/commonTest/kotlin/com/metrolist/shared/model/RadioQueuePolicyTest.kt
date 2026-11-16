@@ -10,6 +10,11 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class RadioQueuePolicyTest {
+    private val predictableShuffle =
+        object : Random() {
+            override fun nextBits(bitCount: Int): Int = 0
+        }
+
     @Test
     fun artistQueueRejectsVideosAcrossContinuationShuffleAndRestore() {
         val seed = song("seed")
@@ -51,11 +56,11 @@ class RadioQueuePolicyTest {
     @Test
     fun repeatedRadioQueuesCanVaryWithoutLosingSongs() {
         val songs = listOf(song("a"), song("b"), song("c"), song("d"))
-        val varied = varyRadioRecommendations(songs, classicRecommendations = false, random = Random(1))
+        val varied = varyRadioRecommendations(songs, classicRecommendations = false, random = predictableShuffle)
 
         assertNotEquals(songs, varied)
         assertEquals(songs.toSet(), varied.toSet())
-        assertEquals(songs, varyRadioRecommendations(songs, classicRecommendations = true, random = Random(1)))
+        assertEquals(songs, varyRadioRecommendations(songs, classicRecommendations = true, random = predictableShuffle))
     }
 
     @Test

@@ -1,29 +1,15 @@
 package com.metrolist.shared.model
 
-import com.metrolist.shared.settings.Settings
-import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class RadioRecommendationHistoryTest {
-    @BeforeTest
-    fun setUp() {
-        Settings.replaceSharedForTest(Settings(MapSettings()))
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Settings.replaceSharedForTest(null)
-    }
-
     private fun song(id: String) = SongItem(id, id, null, emptyList(), null)
 
     private fun page(
@@ -35,8 +21,23 @@ class RadioRecommendationHistoryTest {
         firstPage: RadioQueuePage,
         filter: (List<SongItem>) -> List<SongItem>,
         isCurrent: () -> Boolean,
+        classicRecommendations: Boolean = false,
         loadMore: suspend (String) -> RadioQueuePage,
-    ): RadioQueuePage? = select(firstPage, Settings.shared.classicRecommendations, filter, isCurrent, loadMore)
+    ): RadioQueuePage? = select(firstPage, classicRecommendations, filter, isCurrent, loadMore)
+
+    @Test
+    fun classicSelectionKeepsTheFirstPageOrderWithoutPrefetching() =
+        runTest {
+            val history = RadioRecommendationHistory()
+            val firstPage = page("seed", "b", "a", continuation = "next")
+            val selected =
+                history.select(firstPage, { it }, { true }, classicRecommendations = true) {
+                    error("Classic mode must not prefetch")
+                }
+
+            assertEquals(firstPage.songs, selected?.songs)
+            assertEquals(firstPage.continuation, selected?.continuation)
+        }
 
     @Test
     fun repeatedSeedWithIdenticalFirstPageSelectsDifferentSongs() =
@@ -172,15 +173,25 @@ class RadioRecommendationHistoryTest {
     @Test
     fun classicRecommendationsPreserveYoutubeOrderAndDoNotSkipPreviousResults() =
         runTest {
-            Settings.shared.classicRecommendations = true
             val history = RadioRecommendationHistory()
             val firstPage = page("seed", "first", "second", "first")
-            val first = history.select(firstPage, { it.filterNot { song -> song.id == "seed" } }, { true }) { error("No continuation") }!!
+            val first =
+                history.select(
+                    firstPage,
+                    { it.filterNot { song -> song.id == "seed" } },
+                    { true },
+                    classicRecommendations = true,
+                ) { error("No continuation") }!!
             history.remember(first.songs)
 
             var continuationRequests = 0
             val second =
-                history.select(page("second", "first", "third", continuation = "next"), { it }, { true }) {
+                history.select(
+                    page("second", "first", "third", continuation = "next"),
+                    { it },
+                    { true },
+                    classicRecommendations = true,
+                ) {
                     continuationRequests++
                     error("Classic mode should preserve the first-page order")
                 }!!
@@ -193,12 +204,13 @@ class RadioRecommendationHistoryTest {
     @Test
     fun classicRecommendationsHonorCancellationBeforeSelecting() =
         runTest {
-            Settings.shared.classicRecommendations = true
             val cancelledJob = Job().apply { cancel() }
 
             assertFailsWith<CancellationException> {
                 withContext(cancelledJob) {
-                    RadioRecommendationHistory().select(page("song"), { it }, { true }) { error("No continuation") }
+                    RadioRecommendationHistory().select(page("song"), { it }, { true }, classicRecommendations = true) {
+                        error("No continuation")
+                    }
                 }
             }
         }
