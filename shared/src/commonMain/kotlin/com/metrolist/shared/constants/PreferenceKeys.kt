@@ -176,7 +176,11 @@ val SeekDurationSecondsKey = "seekDurationSeconds"
 val PauseOnMuteKey = "pauseOnMute"
 val AutoBackupEnabledKey = "autoBackupEnabled"
 val AutoBackupFrequencyKey = "autoBackupFrequency"
+val AutoBackupDestinationKey = "autoBackupDestination"
 val AutoBackupLastSuccessEpochKey = "autoBackupLastSuccessEpoch"
+val DriveBrokerSessionKey = "driveBrokerSession"
+val DriveOAuthStateKey = "driveOAuthState"
+val DriveOAuthVerifierKey = "driveOAuthVerifier"
 
 enum class SongSortType {
     CREATE_DATE,
