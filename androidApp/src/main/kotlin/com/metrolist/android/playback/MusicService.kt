@@ -649,7 +649,7 @@ class MusicService :
     }
 
     private fun promoteRoomForeground() {
-        if (isDestroying || !isRunning) return
+        if (isDestroying) return
         setupNotificationChannel()
         val notification =
             mediaNotificationProvider?.latestNotification?.takeIf {
