@@ -184,7 +184,6 @@ object PlaylistAlbumState {
                     localSongs.map {
                         it.toSongItem().copy(
                             playlistLocalMappingId = if (headerItem.isLocal) it.map.id else null,
-                            playlistOccurrenceId = "local:${it.map.id}",
                         )
                     }
                 invocationPlaylistSongs = songItems
