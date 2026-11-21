@@ -128,9 +128,11 @@ internal actual fun MobileMusicVideoSurface(
                 break
             }
             if (foreground && surfaceVisible) video.applyPendingSeek()
-            if (foreground && surfaceVisible && video.ready && video.positionSynchronized) {
+            if (!surfaceVisible) {
+                firstFrameRendered = false
+            } else if (video.ready && video.positionSynchronized) {
                 firstFrameRendered = true
-            } else {
+            } else if (!video.positionSynchronized) {
                 firstFrameRendered = false
             }
             delay(250)
