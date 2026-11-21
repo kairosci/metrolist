@@ -37,7 +37,10 @@ internal class DownloadedArtwork(
                     existing.inputStream().use { input ->
                         temporary.outputStream().use { output -> input.copyTo(output) }
                     }
-                    if (temporary.renameTo(stable)) return stable
+                    if (temporary.renameTo(stable)) {
+                        if (!existing.delete()) Timber.w("Could not remove promoted retained artwork")
+                        return stable
+                    }
                 } finally {
                     temporary.delete()
                 }
