@@ -168,14 +168,36 @@ class AudioRenderer internal constructor(
         }
     }
 
+    private var noiseSamples = ShortArray(0)
+    private var noiseOutput = ByteArray(0)
+
+    /** Applies the microphone correction to finished music PCM, after silence skipping and tempo changes. */
+    private fun applyNoiseCancellation(data: ByteArray): ByteArray {
+        val count = data.size / 2
+        if (count == 0) return data
+        if (noiseSamples.size < count) noiseSamples = ShortArray(count)
+        if (noiseOutput.size != data.size) noiseOutput = ByteArray(data.size)
+        for (i in 0 until count) {
+            noiseSamples[i] = ((data[2 * i].toInt() and 0xff) or (data[2 * i + 1].toInt() shl 8)).toShort()
+        }
+        noiseCanceller.processPcm16(noiseSamples, count)
+        if (data.size % 2 != 0) noiseOutput[data.size - 1] = data[data.size - 1]
+        for (i in 0 until count) {
+            noiseOutput[2 * i] = noiseSamples[i].toByte()
+            noiseOutput[2 * i + 1] = (noiseSamples[i].toInt() shr 8).toByte()
+        }
+        return noiseOutput
+    }
+
     private fun writeOutput(
         data: ByteArray,
         generation: Long,
         outputSpeed: Float,
         isCurrent: () -> Boolean = { true },
     ): Boolean {
+        val output = synchronized(safeLock) { applyNoiseCancellation(data) }
         var offset = 0
-        while (offset < data.size) {
+        while (offset < output.size) {
             val result =
                 synchronized(safeLock) {
                     while (!closed && generation == outputGeneration && !isPlaying) {
@@ -211,7 +233,7 @@ class AudioRenderer internal constructor(
                             throw error
                         }
                     val writableBytes =
-                        minOf(data.size - offset, availableBytes) / audioFormat.frameSize * audioFormat.frameSize
+                        minOf(output.size - offset, availableBytes) / audioFormat.frameSize * audioFormat.frameSize
                     if (writableBytes == 0) {
                         val bufferedFrames = (line.bufferSize - availableBytes).coerceAtLeast(0) / audioFormat.frameSize
                         val waitMs = (bufferedFrames * 500L / sampleRate).coerceIn(1L, 20L)
@@ -231,7 +253,7 @@ class AudioRenderer internal constructor(
                         val currentVol = if (volume == 0f || !hardwareVolumeApplied) volume else 1f
                         val boost = normalizationGain
                         val scaled = currentVol != 1f || boost > 1f
-                        val outputData = if (scaled) applyVolume(data, offset, writableBytes, currentVol, boost) else data
+                        val outputData = if (scaled) applyVolume(output, offset, writableBytes, currentVol, boost) else output
                         try {
                             line.write(outputData, if (scaled) 0 else offset, writableBytes)
                         } catch (error: Exception) {
@@ -242,7 +264,7 @@ class AudioRenderer internal constructor(
                             throw error
                         }.let { writtenBytes ->
                             if (writtenBytes > 0) {
-                                rememberWrittenOutput(data, offset, writtenBytes)
+                                rememberWrittenOutput(output, offset, writtenBytes)
                                 writtenFrameCount += writtenBytes / audioFormat.frameSize
                                 discardPlayedOutput()
                                 hasWrittenAudio = true
@@ -449,7 +471,6 @@ class AudioRenderer internal constructor(
             equalizerSamples[i] = ((data[2 * i].toInt() and 0xff) or (data[2 * i + 1].toInt() shl 8)).toShort()
         }
         equalizer.processPcm16(equalizerSamples, count, outputBoostDb)
-        noiseCanceller.processPcm16(equalizerSamples, count)
         AudioSpectrumMeter.accept(equalizerSamples, count, channelCount, sampleRate, equalizer.gainReductionDb.toFloat())
         // The loop below rewrites every whole sample; only a trailing odd byte needs copying.
         if (data.size % 2 != 0) equalizerOutput[data.size - 1] = data[data.size - 1]

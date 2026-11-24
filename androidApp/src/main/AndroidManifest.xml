@@ -466,7 +466,7 @@
             android:name="com.metrolist.android.playback.MusicService"
             android:enabled="true"
             android:exported="true"
-            android:foregroundServiceType="mediaPlayback"
+            android:foregroundServiceType="mediaPlayback|microphone"
             tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService" />

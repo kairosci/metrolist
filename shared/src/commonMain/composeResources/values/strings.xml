@@ -5260,7 +5260,7 @@
 <string name="metroeq_noise_cancellation">Noise cancellation</string>
 <string name="metroeq_noise_cancellation_description">Uses the microphone to partially reduce nearby voices. Results depend on microphone and headphone placement; microphone audio never leaves this device.</string>
 <string name="metroeq_noise_cancellation_strength">Reduction strength: %1$s%2$s</string>
-<string name="metroeq_noise_cancellation_active">Microphone active at maximum reduction. Audio is processed only on this device.</string>
+<string name="metroeq_noise_cancellation_active">Microphone active. Audio is processed only on this device.</string>
 <string name="metroeq_noise_cancellation_permission">Microphone access is needed for noise cancellation.</string>
 <string name="metroeq_noise_cancellation_unavailable">Noise cancellation is unavailable on this device.</string>
 <string name="metroeq_noise_cancellation_error">The microphone could not be started.</string>

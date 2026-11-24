@@ -185,18 +185,24 @@ internal fun pitchSafeAudioSink(
     }
 }
 
-internal fun musicAudioProcessorChain(vararg processors: AudioProcessor): DefaultAudioSink.DefaultAudioProcessorChain =
-    DefaultAudioSink.DefaultAudioProcessorChain(
-        arrayOf(*processors),
-        SilenceSkippingAudioProcessor(
-            MUSIC_MINIMUM_SILENCE_DURATION_US,
-            SilenceSkippingAudioProcessor.DEFAULT_SILENCE_RETENTION_RATIO,
-            SilenceSkippingAudioProcessor.DEFAULT_MAX_SILENCE_TO_KEEP_DURATION_US,
-            SilenceSkippingAudioProcessor.DEFAULT_MIN_VOLUME_TO_KEEP_PERCENTAGE,
-            (Short.MAX_VALUE * 10.0.pow(MUSIC_SILENCE_THRESHOLD_DB / 20.0)).toInt().toShort(),
-        ),
-        SonicAudioProcessor(),
-    )
+internal fun musicAudioProcessorChain(vararg processors: AudioProcessor): AudioProcessorChain {
+    val delegate =
+        DefaultAudioSink.DefaultAudioProcessorChain(
+            arrayOf(*processors),
+            SilenceSkippingAudioProcessor(
+                MUSIC_MINIMUM_SILENCE_DURATION_US,
+                SilenceSkippingAudioProcessor.DEFAULT_SILENCE_RETENTION_RATIO,
+                SilenceSkippingAudioProcessor.DEFAULT_MAX_SILENCE_TO_KEEP_DURATION_US,
+                SilenceSkippingAudioProcessor.DEFAULT_MIN_VOLUME_TO_KEEP_PERCENTAGE,
+                (Short.MAX_VALUE * 10.0.pow(MUSIC_SILENCE_THRESHOLD_DB / 20.0)).toInt().toShort(),
+            ),
+            SonicAudioProcessor(),
+        )
+    val noiseCancellation = NoiseCancellationAudioProcessor()
+    return object : AudioProcessorChain by delegate {
+        override fun getAudioProcessors(): Array<AudioProcessor> = delegate.getAudioProcessors() + noiseCancellation
+    }
+}
 
 internal class SilenceDetectorAudioProcessor : BaseAudioProcessor() {
     @Volatile var enabled = false

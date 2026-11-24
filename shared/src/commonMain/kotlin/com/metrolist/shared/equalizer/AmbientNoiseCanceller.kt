@@ -85,8 +85,8 @@ class AmbientNoiseCanceller(
         if (antiNoise.size < frames) antiNoise = FloatArray(frames)
         reader.read(microphoneSamples, frames, sampleRate)
         val target = if (NoiseCancellation.isActive) NoiseCancellation.strength else 0f
-        ramp = if (ramp < target) min(target, ramp + rampStep) else max(target, ramp - rampStep)
         for (frame in 0 until frames) {
+            ramp = if (ramp < target) min(target, ramp + rampStep) else max(target, ramp - rampStep)
             val raw = microphoneSamples[frame] / 32768f
             dcEstimate = raw + dcDecay * (dcEstimate - raw)
             val voiceBand = raw - dcEstimate

@@ -21,10 +21,14 @@ interface NoiseMicrophone {
 
     fun requestPermission()
 
-    /** [onSamples] receives the buffer, the frame count and the actual capture rate. */
+    /**
+     * [onSamples] receives the buffer, the frame count and the actual capture rate.
+     * [onFailure] reports that a started capture exited; it is not called for a deliberate [stop].
+     */
     fun start(
         sampleRate: Int,
         onSamples: (ShortArray, Int, Int) -> Unit,
+        onFailure: () -> Unit,
     ): Boolean
 
     fun stop()
@@ -78,6 +82,7 @@ object NoiseCancellation {
 
     private val ring = MicrophoneRing()
     private val generation = atomic(0)
+    private val failureReported = atomic(false)
     private val _status = MutableStateFlow(NoiseCancellationStatus.OFF)
     val status = _status.asStateFlow()
 
@@ -92,6 +97,10 @@ object NoiseCancellation {
 
     val isActive: Boolean
         get() = isEnabled && _status.value == NoiseCancellationStatus.ACTIVE
+
+    /** True while capture is starting or running, for platform resources that must cover the whole session. */
+    val isCapturing: Boolean
+        get() = isEnabled && (_status.value == NoiseCancellationStatus.STARTING || isActive)
 
     /** A platform registers its microphone implementation once; samples stay inside this process. */
     fun register(microphone: NoiseMicrophone) {
@@ -108,6 +117,18 @@ object NoiseCancellation {
         } else {
             stopCapture()
         }
+    }
+
+    /** Applies settings that were restored after this controller was registered. */
+    fun reloadSettings() {
+        strength = Settings.shared.noiseCancellationStrength.coerceIn(0f, 1f)
+        val restored = Settings.shared.noiseCancellationEnabled
+        if (restored == isEnabled) {
+            refreshStatus()
+            return
+        }
+        isEnabled = restored
+        if (restored) startCapture() else stopCapture()
     }
 
     fun setStrength(value: Float) {
@@ -166,15 +187,30 @@ object NoiseCancellation {
             }
 
             else -> {
+                val session = generation.incrementAndGet()
+                failureReported.value = false
                 _status.value = NoiseCancellationStatus.STARTING
                 val started =
-                    source.start(MICROPHONE_SAMPLE_RATE) { samples, count, rate ->
-                        ring.publish(samples, count, rate)
+                    try {
+                        source.start(
+                            MICROPHONE_SAMPLE_RATE,
+                            onSamples = { samples, count, rate -> ring.publish(samples, count, rate) },
+                            onFailure = { reportCaptureFailure(session) },
+                        )
+                    } catch (_: Exception) {
+                        false
                     }
-                generation.incrementAndGet()
-                _status.value = if (started) NoiseCancellationStatus.ACTIVE else NoiseCancellationStatus.ERROR
+                if (generation.value != session) return
+                _status.value =
+                    if (started && !failureReported.value) NoiseCancellationStatus.ACTIVE else NoiseCancellationStatus.ERROR
             }
         }
+    }
+
+    private fun reportCaptureFailure(session: Int) {
+        if (generation.value != session) return
+        failureReported.value = true
+        _status.value = NoiseCancellationStatus.ERROR
     }
 
     private fun stopCapture() {
@@ -184,8 +220,8 @@ object NoiseCancellation {
 
     private fun ensureCaptureStopped() {
         if (_status.value == NoiseCancellationStatus.OFF) return
-        microphone?.stop()
         generation.incrementAndGet()
+        microphone?.stop()
         _status.value = NoiseCancellationStatus.OFF
     }
 
@@ -200,7 +236,7 @@ class NoiseReferenceReader internal constructor(
     private val ring: MicrophoneRing,
     private var generation: Int,
 ) {
-    private var sourceFrame = 0.0
+    private var sourceFrame = ring.latestSequence.toDouble()
     private var rate = NoiseCancellation.MICROPHONE_SAMPLE_RATE
 
     /** Writes [frames] mono samples at [sampleRate] into [target], using silence until the mic catches up. */
@@ -211,16 +247,18 @@ class NoiseReferenceReader internal constructor(
     ) {
         if (frames <= 0 || sampleRate <= 0) return
         val currentGeneration = NoiseCancellation.currentGeneration()
-        if (generation != currentGeneration || rate != ring.sampleRate) {
+        val ringRate = ring.sampleRate
+        val resync = generation != currentGeneration || rate != ringRate
+        if (resync) {
             generation = currentGeneration
-            rate = ring.sampleRate
-            sourceFrame = 0.0
+            rate = ringRate
         }
         val latest = ring.latestSequence
+        if (resync) sourceFrame = latest.toDouble()
         val oldest = max(0L, latest - MICROPHONE_RING_FRAMES)
         if (sourceFrame < oldest) sourceFrame = oldest.toDouble()
         if (sourceFrame > latest) sourceFrame = latest.toDouble()
-        val step = ring.sampleRate.toDouble() / sampleRate
+        val step = ringRate.toDouble() / sampleRate
         for (index in 0 until frames) {
             val position = sourceFrame.toLong()
             val fraction = (sourceFrame - position).toFloat()
@@ -228,10 +266,10 @@ class NoiseReferenceReader internal constructor(
                 val first = ring.sampleAt(position).toInt()
                 val second = ring.sampleAt(position + 1).toInt()
                 target[index] = (first + (second - first) * fraction).toInt().toShort()
+                sourceFrame += step
             } else {
                 target[index] = 0
             }
-            sourceFrame += step
         }
     }
 }

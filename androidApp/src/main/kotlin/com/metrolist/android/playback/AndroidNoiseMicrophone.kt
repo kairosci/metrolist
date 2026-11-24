@@ -22,6 +22,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 
 /** Captures the local microphone for feed-forward noise reduction; no sample is sent anywhere. */
@@ -29,6 +30,7 @@ internal object AndroidNoiseMicrophone : NoiseMicrophone {
     @Volatile private var permissionLauncher: ActivityResultLauncher<String>? = null
 
     @Volatile private var job: Job? = null
+    private val session = AtomicInteger(0)
 
     fun attach(launcher: ActivityResultLauncher<String>) {
         permissionLauncher = launcher
@@ -48,49 +50,50 @@ internal object AndroidNoiseMicrophone : NoiseMicrophone {
     override fun start(
         sampleRate: Int,
         onSamples: (ShortArray, Int, Int) -> Unit,
+        onFailure: () -> Unit,
     ): Boolean {
         if (job?.isActive == true) return true
         if (!hasPermission()) return false
         val minBuffer = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (minBuffer <= 0) return false
         val buffer = ShortArray(max(minBuffer, sampleRate / 50) / 2)
-        val recorder =
-            try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    sampleRate,
-                    AudioFormat.CHANNEL_IN_MONO,
-                    AudioFormat.ENCODING_PCM_16BIT,
-                    buffer.size * 2,
-                )
-            } catch (_: Exception) {
-                return false
-            }
-        if (recorder.state != AudioRecord.STATE_INITIALIZED) {
-            recorder.release()
-            return false
-        }
+        val captureSession = session.incrementAndGet()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         job =
             scope.launch {
+                var recorder: AudioRecord? = null
                 try {
-                    recorder.startRecording()
+                    if (!isActive) return@launch
+                    val activeRecorder =
+                        AudioRecord(
+                            MediaRecorder.AudioSource.MIC,
+                            sampleRate,
+                            AudioFormat.CHANNEL_IN_MONO,
+                            AudioFormat.ENCODING_PCM_16BIT,
+                            buffer.size * 2,
+                        )
+                    recorder = activeRecorder
+                    if (activeRecorder.state != AudioRecord.STATE_INITIALIZED) error("AudioRecord not initialized")
+                    activeRecorder.startRecording()
                     while (isActive) {
                         val read =
-                            recorder.read(
+                            activeRecorder.read(
                                 buffer,
                                 0,
                                 buffer.size,
                                 AudioRecord.READ_BLOCKING,
                             )
-                        if (read <= 0) break
-                        onSamples(buffer, read, recorder.sampleRate)
+                        if (read <= 0) error("AudioRecord read failed")
+                        onSamples(buffer, read, activeRecorder.sampleRate)
                     }
                 } catch (_: Exception) {
-                    // Capture ended; the recorder is released below.
+                    if (isActive) onFailure()
                 } finally {
-                    runCatching { recorder.stop() }
-                    recorder.release()
+                    recorder?.let {
+                        runCatching { it.stop() }
+                        it.release()
+                    }
+                    if (session.get() == captureSession) job = null
                     scope.cancel()
                 }
             }
@@ -98,6 +101,7 @@ internal object AndroidNoiseMicrophone : NoiseMicrophone {
     }
 
     override fun stop() {
+        session.incrementAndGet()
         job?.cancel()
         job = null
     }

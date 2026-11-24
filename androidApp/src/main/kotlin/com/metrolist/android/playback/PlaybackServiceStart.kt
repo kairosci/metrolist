@@ -13,6 +13,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaNotification
 import com.metrolist.android.MainActivity
 import com.metrolist.android.R
+import com.metrolist.shared.equalizer.NoiseCancellation
 
 internal const val PLAYBACK_NOTIFICATION_CHANNEL_ID = "playback"
 
@@ -56,10 +57,14 @@ internal fun Service.promotePlaybackServiceStart(notification: MediaNotification
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                 .build(),
         )
+    var foregroundTypes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
+    if (NoiseCancellation.isCapturing && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+    }
     ServiceCompat.startForeground(
         this,
         startupNotification.notificationId,
         startupNotification.notification,
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0,
+        foregroundTypes,
     )
 }

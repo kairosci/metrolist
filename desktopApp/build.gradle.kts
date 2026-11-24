@@ -837,6 +837,8 @@ compose.desktop {
                 infoPlist {
                     extraKeysRawXml =
                         """
+                        <key>NSMicrophoneUsageDescription</key>
+                        <string>Metrolist uses the microphone only while noise reduction is enabled in MetroEQ. Microphone audio is processed on this device and is not stored or sent anywhere.</string>
                         <key>NSLocalNetworkUsageDescription</key>
                         <string>Metrolist uses the local network to find and control casting devices.</string>
                         <key>NSBonjourServices</key>

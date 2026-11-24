@@ -198,6 +198,7 @@ class App :
                             withContext(Dispatchers.IO) { BackupRestoreManager.applyPendingRestore(this@App) }
                             Settings.shared.androidLastStorageAudit = 0L
                             Settings.shared.androidLastTrackedPlaylistSync = 0L
+                            NoiseCancellation.reloadSettings()
                         }
                     },
                     start = {

@@ -371,9 +371,7 @@ private fun ProfilesPage(
         }
         EqualizerGraph(activeProfile, meter.sampleRate, meter.levels)
         PreampControl(meter.gainReductionDb)
-        if (isAudioProcessingAvailable) {
-            NoiseCancellationControl()
-        }
+        NoiseCancellationControl()
         Surface(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             shape = RoundedCornerShape(20.dp),

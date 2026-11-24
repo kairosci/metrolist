@@ -94,6 +94,8 @@ import com.metrolist.shared.discord.DiscordRpcManager
 import com.metrolist.shared.discord.PresenceStatus
 import com.metrolist.shared.discord.discordPlaybackTimestamps
 import com.metrolist.shared.discord.resolveDiscordButtonLabel
+import com.metrolist.shared.equalizer.NoiseCancellation
+import com.metrolist.shared.equalizer.NoiseCancellationStatus
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.playback_unable_to_play_queued_track
 import com.metrolist.shared.generated.resources.search_no_results
@@ -682,6 +684,7 @@ class MusicService :
         running.value = true
         observeServiceLifetime()
         observeListenTogetherForegroundDemand()
+        observeNoiseCaptureForegroundType()
         // Registration reports existing devices too; only a later connection should resume playback.
         audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).mapTo(connectedAudioOutputs) { it.id }
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, mainHandler)
@@ -774,6 +777,26 @@ class MusicService :
                     }
                 }
             }
+        }
+    }
+
+    private fun observeNoiseCaptureForegroundType() {
+        serviceScope.launch {
+            NoiseCancellation.status
+                .map { it == NoiseCancellationStatus.STARTING || it == NoiseCancellationStatus.ACTIVE }
+                .distinctUntilChanged()
+                .collect { capturing ->
+                    if (isDestroying || !isRunning || media3Player?.currentMediaItem == null) return@collect
+                    try {
+                        promotePlaybackServiceStart(mediaNotificationProvider?.latestNotification)
+                    } catch (error: RuntimeException) {
+                        if (isForegroundStartDenied(error)) {
+                            Timber.w(error, "Noise capture foreground type update was not allowed")
+                        } else {
+                            throw error
+                        }
+                    }
+                }
         }
     }
 
