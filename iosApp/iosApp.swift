@@ -32,6 +32,7 @@ struct MetrolistApp: App {
         }
         if !IosCrashRecovery.shared.hasPendingReport {
             MetrolistPlatform.shared.initialize()
+            IosCarPlayBridge.shared.initializeForCarPlay()
         }
         if UserDefaults.standard.bool(forKey: "sentryEnabled") {
             startSentryReporting()

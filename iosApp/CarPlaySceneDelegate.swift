@@ -79,7 +79,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     private func section(for items: [CarPlayBrowseItem], containerId: String?, strings: CarPlayStrings) -> CPListSection {
-        let rows: [CPListItem] = items.map { item in
+        let rows: [CPListItem] = items.prefix(CPListTemplate.maximumItemCount).map { item in
             let listItem = CPListItem(text: item.title, detailText: item.subtitle)
             listItem.handler = { [weak self] _, completion in
                 self?.handleSelection(item: item, containerId: containerId, strings: strings)
@@ -95,11 +95,12 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             pushContainer(item: item, strings: strings)
             return
         }
-        guard let containerId else { return }
-        let components = item.id.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
-        guard components.count == 2 else { return }
-        let songId = String(components[1])
-        IosCarPlayBridge.shared.playSongFromContainer(containerId: containerId, songId: songId)
+        guard let containerId, let songId = item.songId else { return }
+        IosCarPlayBridge.shared.playSongFromContainer(
+            containerId: containerId,
+            songId: songId,
+            occurrenceId: item.occurrenceId
+        )
         interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true, completion: nil)
     }
 
