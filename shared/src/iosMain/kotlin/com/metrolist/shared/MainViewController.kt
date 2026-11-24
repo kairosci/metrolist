@@ -66,6 +66,7 @@ import com.metrolist.shared.listentogether.ListenTogetherTrackResolver
 import com.metrolist.shared.listentogether.toSongItem
 import com.metrolist.shared.network.createHttpClient
 import com.metrolist.shared.playback.IosPlaybackController
+import com.metrolist.shared.playback.IosPlaybackSessionOwner
 import com.metrolist.shared.playback.IosPlayerPlatformServices
 import com.metrolist.shared.playback.MusicPlayer
 import com.metrolist.shared.playlist.IosPlaylistCoverMapper
@@ -196,6 +197,10 @@ fun MetrolistIOSApp() {
         }
     }
     val player = remember(koin, databaseGeneration) { koin.get<MusicPlayer>() }
+    DisposableEffect(player) {
+        IosPlaybackSessionOwner.acquireWindow(player)
+        onDispose { IosPlaybackSessionOwner.releaseWindow(player) }
+    }
     val appJob = remember(databaseGeneration) { SupervisorJob(scope.coroutineContext[Job]) }
     val appScope = remember(appJob) { CoroutineScope(scope.coroutineContext + appJob) }
     LaunchedEffect(database, appScope) {
@@ -272,7 +277,6 @@ fun MetrolistIOSApp() {
             downloadManager.close()
             playbackController.releaseMusicVideoSurfacePlayer()
             appJob.cancel()
-            player.release()
         }
     }
     DisposableEffect(Unit) {
