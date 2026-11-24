@@ -3,6 +3,8 @@ package com.metrolist.shared.carplay
 import com.metrolist.shared.db.MusicDatabase
 import com.metrolist.shared.db.entities.Playlist
 import com.metrolist.shared.db.entities.toSongItem
+import com.metrolist.shared.db.hasCompleteStoredSongs
+import com.metrolist.shared.db.loadAndCachePlaylistPage
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.liked_songs
 import com.metrolist.shared.generated.resources.now_playing
@@ -13,12 +15,15 @@ import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.model.playlistOccurrenceIdentity
 import com.metrolist.shared.playback.IosPlaybackController
 import com.metrolist.shared.playback.MusicPlayer
+import com.metrolist.shared.state.GlobalYouTubeRepository
 import com.metrolist.shared.storage.IosAudioDownloadManager
 import com.metrolist.shared.ui.playback.PlaybackController
 import com.metrolist.shared.ui.playback.PlaybackUiState
+import com.metrolist.shared.youtube.logging.YtLogger
 import com.metrolist.shared.youtube.playback.StreamResolver
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,6 +32,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.getString
 import org.koin.mp.KoinPlatform
@@ -69,6 +76,7 @@ object IosCarPlayBridge {
     private val pendingStringCompletions = mutableListOf<(CarPlayStrings) -> Unit>()
     private var stateJob: Job? = null
     private var songSelectionGeneration = 0L
+    private val playlistFetchMutex = Mutex()
 
     fun initializeForCarPlay() {
         val needsInitialization = synchronized(lock) { scope == null }
@@ -221,9 +229,18 @@ object IosCarPlayBridge {
         activeScope.launch {
             val items =
                 when (parentId) {
-                    LIKED_SONGS_ID -> loadLikedSongs(db)
-                    PLAYLISTS_ID -> loadPlaylists(db)
-                    else -> loadPlaylistSongs(db, parentId)
+                    LIKED_SONGS_ID -> {
+                        loadLikedSongs(db)
+                    }
+
+                    PLAYLISTS_ID -> {
+                        loadPlaylists(db)
+                    }
+
+                    else -> {
+                        ensureRemotePlaylistSongs(db, parentId)
+                        loadPlaylistSongs(db, parentId)
+                    }
                 }
             completion(items)
         }
@@ -253,6 +270,7 @@ object IosCarPlayBridge {
                 if (containerId == LIKED_SONGS_ID) {
                     loadLikedSongItems(currentDatabase)
                 } else {
+                    ensureRemotePlaylistSongs(currentDatabase, containerId)
                     loadPlaylistSongItems(currentDatabase, containerId)
                 }
             val index =
@@ -308,6 +326,30 @@ object IosCarPlayBridge {
                 .first()
                 .map { it.toBrowseItem() }
         }
+
+    private suspend fun ensureRemotePlaylistSongs(
+        db: MusicDatabase,
+        playlistId: String,
+    ) {
+        playlistFetchMutex.withLock {
+            val entity = db.dao().findPlaylistEntity(playlistId) ?: return@withLock
+            if (entity.isLocal || entity.browseId == null) return@withLock
+            val storedSongs =
+                db
+                    .dao()
+                    .playlistSongs(playlistId)
+                    .first()
+                    .map { it.toSongItem() }
+            if (entity.hasCompleteStoredSongs(storedSongs)) return@withLock
+            try {
+                db.loadAndCachePlaylistPage(GlobalYouTubeRepository.instance, playlistId)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                YtLogger.e("CarPlay", "Playlist fetch failed type=${error::class.simpleName}")
+            }
+        }
+    }
 
     private suspend fun loadPlaylistSongs(
         db: MusicDatabase,
